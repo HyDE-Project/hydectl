@@ -7,12 +7,12 @@ hydectl is a CLI tool for managing HyDE configurations and scripts. It allows yo
 To install hydectl, clone the repository and build the project:
 
 ```sh
-git clone https://github.com/yourusername/hydectl.git
+git clone https://github.com/HyDE-Project/hydectl.git
 cd hydectl
-make
+make all
 ```
 
-To install the binary:
+To install the binary to ~/.local/lib:
 
 ```sh
 make install
@@ -22,13 +22,6 @@ To uninstall the binary:
 
 ```sh
 make uninstall
-```
-
-To enable shell completion (Bash):
-
-```sh
-make completion
-source /etc/bash_completion.d/hydectl
 ```
 
 ## Usage
@@ -81,7 +74,3 @@ You can add your scripts to any of these directories to make them available for 
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.
-
-## License
-
-This project is licensed under the MIT License.
