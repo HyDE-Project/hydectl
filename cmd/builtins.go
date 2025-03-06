@@ -13,7 +13,7 @@ var builtins = []*cobra.Command{
 		Use:   "version",
 		Short: "Print the version number",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Hydectl v0.1.0")
+			fmt.Printf("hydectl %s\n", Version)
 		},
 	},
 	{

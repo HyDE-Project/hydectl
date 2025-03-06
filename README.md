@@ -1,53 +1,87 @@
-# hydectl - A Command Line Interface for Managing Scripts
+# hydectl
 
-## Overview
-
-`hydectl` is a command-line interface (CLI) tool designed to manage and execute scripts dynamically. It features a plugin system that allows users to run custom scripts located in `~/.local/share/hyprctl/scripts/`. The CLI is built using the Cobra library, providing a structured and user-friendly command interface.
-
-## Features
-
-- **Dynamic Plugin System**: Automatically discovers and executes scripts from the specified directory.
-- **Built-in Commands**: Comes with several built-in commands for common tasks.
-- **Help System**: Automatically generates help messages based on available commands and plugins.
+hydectl is a CLI tool for managing HyDE configurations and scripts. It allows you to execute built-in commands and user-defined scripts from specified directories.
 
 ## Installation
 
-To install `hydectl`, clone the repository and build the project:
+To install hydectl, clone the repository and build the project:
 
-```bash
+```sh
 git clone https://github.com/yourusername/hydectl.git
 cd hydectl
-go mod tidy
-go build -o hydectl
+make
+```
+
+To install the binary:
+
+```sh
+make install
+```
+
+To uninstall the binary:
+
+```sh
+make uninstall
+```
+
+To enable shell completion (Bash):
+
+```sh
+make completion
+source /etc/bash_completion.d/hydectl
 ```
 
 ## Usage
 
-After installation, you can run `hydectl` from the command line:
+hydectl provides a command-line interface for executing commands and scripts. Below are some examples of how to use hydectl.
 
-```bash
-./hydectl
+### Execute a Script
+
+To execute a script from the configured script directories:
+
+```sh
+./hydectl <script_name> [args...]
 ```
 
-### Built-in Commands
+### List Available Scripts
 
-- `help`: Displays help information for all commands.
-- `version`: Shows the current version of `hydectl`.
+To list all available scripts:
 
-### Running Scripts
-
-To run a script, simply use the command followed by the script name:
-
-```bash
-./hydectl run <script_name>
+```sh
+./hydectl --list
 ```
 
-Make sure your scripts are located in `~/.local/share/hyprctl/scripts/`.
+### Help
 
-## Example Script
+To display the help message:
 
-An example script is provided in the `scripts` directory. You can use it as a template to create your own scripts.
+```sh
+./hydectl --help
+```
+
+## Configuration
+
+hydectl searches for scripts in the following directories:
+
+- `${XDG_CONFIG_HOME}/lib/hydectl/scripts`
+- `${XDG_DATA_HOME}/lib/hydectl/scripts`
+- `${XDG_DATA_HOME}/lib/hyde`
+- `/usr/local/lib/hydectl/scripts`
+- `/usr/lib/hydectl/scripts`
+
+You can add your scripts to any of these directories to make them available for execution.
+
+## Available Commands
+
+- `hydectl <script_name> [args...]`: Execute a script from the configured script directories.
+- `hydectl --list`: List all available scripts.
+- `hydectl help`: Display the help message.
+- `hydectl completion <shell>`: Generate a completion script for the specified shell (bash, zsh, fish, powershell).
 
 ## Contributing
 
-Contributions are welcome! Please submit a pull request or open an issue for any enhancements or bug fixes.
+Contributions are welcome! Please open an issue or submit a pull request on GitHub.
+
+## License
+
+This project is licensed under the MIT License.
