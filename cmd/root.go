@@ -13,8 +13,8 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "hydectl",
-	Short: "hydectl is a CLI tool for managing HyDE configurations and scripts.",
-	Long:  `hydectl provides a command-line interface for executing built-in commands and user-defined scripts.`,
+	Short: "Tool for interacting with HyDE",
+	Long:  `HyDE Projects Official Command line interface.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			cmd.Help()
