@@ -1,4 +1,3 @@
-// from: https://github.com/thiagokokada/hyprland-go/blob/main/examples/hyprtabs/main.go
 // Group all windows in the current workspace, or ungroup, basically similar to
 // how i3/sway tabbed container works.
 // This script works better with "master" layouts (since the layout is more
