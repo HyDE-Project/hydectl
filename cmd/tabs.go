@@ -62,7 +62,7 @@ var tabsCmd = &cobra.Command{
 				// will work
 				// For master layouts we also call swapwithmaster, this
 				// makes the switch more reliable
-				// FIXME: this workaround could be fixed if hyprland
+				// TODO: this workaround could be fixed if hyprland
 				// supported moving windows based on address and not
 				// only positions
 				for i := 0; i < 2; i++ {
