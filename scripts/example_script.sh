@@ -4,4 +4,4 @@
 # You can modify this script to create your own custom commands.
 
 echo "Hello from example_script.sh!"
-echo "This script can be executed via the hydectl CLI."
+echo "This script can be executed via the hydectl dispatch <script>."

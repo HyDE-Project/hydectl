@@ -15,7 +15,6 @@ var (
 	skipStrays       bool
 	verbose          bool
 	wallpaperBackend string
-	wallpaperFlag    string
 	wallpaperPath    string
 	wallpaperOutput  string
 	setAsGlobal      bool
@@ -24,7 +23,7 @@ var (
 var wallpaperCmd = &cobra.Command{
 	Use:   "wallpaper",
 	Short: "Manage wallpapers",
-	Long:  `Manage wallpapers including listing, setting, and other operations.`,
+	Long:  `Manage wallpapers`,
 }
 
 var listCmd = &cobra.Command{
@@ -39,7 +38,7 @@ var listCmd = &cobra.Command{
 	},
 }
 
-var selectCmd = &cobra.Command{
+var wallSelectCmd = &cobra.Command{
 	Use:   "select",
 	Short: "Select wallpaper using rofi",
 	Long:  `Select wallpaper using rofi.`,
@@ -129,11 +128,11 @@ func init() {
 	listCmd.Flags().BoolVar(&verbose, "verbose", false, "Enable verbose output")
 	listCmd.Flags().Bool("json", true, "Output in JSON format")
 
-	wallpaperCmd.PersistentFlags().StringVar(&wallpaperBackend, "backend", "swww", "Set wallpaper backend to use (swww, hyprpaper, etc.)")
+	wallpaperCmd.PersistentFlags().StringVar(&wallpaperBackend, "backend", "swww", "Set wallpaper backend to use (swww, mpvpaper, etc.)")
 	wallpaperCmd.PersistentFlags().BoolVar(&setAsGlobal, "global", false, "Set wallpaper as global")
 
 	wallpaperCmd.AddCommand(listCmd)
-	wallpaperCmd.AddCommand(selectCmd)
+	wallpaperCmd.AddCommand(wallSelectCmd)
 	wallpaperCmd.AddCommand(nextCmd)
 	wallpaperCmd.AddCommand(previousCmd)
 	wallpaperCmd.AddCommand(randomCmd)

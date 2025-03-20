@@ -86,9 +86,9 @@ var zoomCmd = &cobra.Command{
 }
 
 func init() {
-	zoomCmd.Flags().BoolVar(&zoomIn, "in", false, "Zoom in")
-	zoomCmd.Flags().BoolVar(&zoomOut, "out", false, "Zoom out")
-	zoomCmd.Flags().BoolVar(&zoomReset, "reset", false, "Reset zoom")
+	zoomCmd.Flags().BoolVarP(&zoomIn, "in", "i", false, "Zoom in")
+	zoomCmd.Flags().BoolVarP(&zoomOut, "out", "o", false, "Zoom out")
+	zoomCmd.Flags().BoolVarP(&zoomReset, "reset", "r", false, "Reset zoom")
 	zoomCmd.Flags().Float64Var(&intensity, "intensity", 0.1, "Zoom intensity")
 	rootCmd.AddCommand(zoomCmd)
 }
