@@ -1,11 +1,18 @@
 PREFIX ?= /usr/local/bin
 BINARY_NAME = hydectl
-VERSION ?= $(shell git describe --tags --always --dirty)
+GIT_COUNT := $(shell git rev-list --count HEAD)
+GIT_HASH := $(shell git rev-parse --short HEAD)
+GIT_DESCRIBE := $(shell git describe --tags --always)
+VERSION ?= r$(GIT_COUNT).$(GIT_HASH)
+
+
+
 GIT = github.com/HyDE-Project/hydectl/
 
 all: uninstall clean build install
 
 build:
+	@echo "Building $(BINARY_NAME) $(VERSION)"
 	go build -ldflags "-X hydectl/cmd.Version=$(VERSION)" -o bin/$(BINARY_NAME)
 
 install: build

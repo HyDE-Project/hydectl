@@ -57,8 +57,8 @@ func getHelpTemplate() string {
 	return `
     {{with (or .Long .Short)}}` + cyan + `{{.}}` + reset + `{{end}}
 
-` + bold + `Usage:` + reset + `
-  ` + yellow + `{{.UseLine}}` + reset + `
+` + bold + yellow + `Usage:` + reset + `
+  {{.UseLine}}` + reset + `
 
 ` + bold + yellow + `Available Commands:` + reset + `
 {{range .Commands}}{{if (and .IsAvailableCommand (ne .Name "help"))}}
