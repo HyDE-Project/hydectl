@@ -87,17 +87,21 @@ var randomCmd = &cobra.Command{
 }
 
 var setCmd = &cobra.Command{
-	Use:   "set",
+	Use:   "set [wallpaper path]",
 	Short: "Set specified wallpaper",
 	Long:  `Set specified wallpaper.`,
+	Args:  cobra.ExactArgs(1), // Ensure exactly one argument is passed
 	Run: func(cmd *cobra.Command, args []string) {
+		wallpaperPath = args[0] // Get the wallpaper path from the positional argument
+
+		logger.Debugf("Setting wallpaper to: %s", wallpaperPath)
+
 		err := hydeshell.RunCommand("wallpaper", "--set", wallpaperPath)
 		if err != nil {
 			logger.Errorf("Error executing hyde-shell command: %v", err)
 		}
 	},
 }
-
 var getCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get current wallpaper of specified backend",
