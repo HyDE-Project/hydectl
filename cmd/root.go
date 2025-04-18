@@ -14,7 +14,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "hydectl",
 	Short: "Tool for interacting with HyDE",
-	Long:  `HyDE Projects Official Command line interface.`,
+	Long:  `HyDE-Project's Official Command line interface.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			cmd.Help()
