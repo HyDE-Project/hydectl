@@ -4,9 +4,10 @@ hydectl is a CLI tool for managing HyDE configurations and scripts. It allows yo
 
 ## Installation
 
-To install hydectl, clone the repository and build the project:
+To install hydectl, make sure "go" is installed, clone the repository and build the project:
 
 ```sh
+pacman -S --needed go
 git clone https://github.com/HyDE-Project/hydectl.git
 cd hydectl
 make all

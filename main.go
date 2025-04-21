@@ -5,18 +5,18 @@ import (
 	"path/filepath"
 
 	"hydectl/cmd"
-	"hydectl/internal/logging"
+	"hydectl/internal/logger"
 	"hydectl/internal/plugin"
 
 	"github.com/adrg/xdg"
 )
 
 func main() {
-	logging.SetupLogging()
+	logger.SetupLogging()
 
 	cmd.ScriptPaths = []string{
 		xdg.ConfigHome + "/lib/hydectl/scripts",
-		os.Getenv("HOME") + "/.local/lib/hyde",
+		// os.Getenv("HOME") + "/.local/lib/hyde",
 		os.Getenv("HOME") + "/.local/lib/hydectl/scripts",
 		"/usr/local/lib/hydectl/scripts",
 		"/usr/lib/hydectl/scripts",
@@ -54,7 +54,7 @@ func main() {
 			return
 		}
 
-		logging.Debugf("Executing script: %s", scriptPath)
+		logger.Debugf("Executing script: %s", scriptPath)
 		plugin.ExecuteScript(scriptPath, os.Args[2:])
 		return
 	}

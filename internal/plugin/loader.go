@@ -2,12 +2,11 @@ package plugin
 
 import (
 	"fmt"
+	"hydectl/internal/logger"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"hydectl/internal/logging"
 )
 
 // LoadScripts searches for executable scripts in the specified directories.
@@ -17,7 +16,7 @@ func LoadScripts(dirs []string) ([]string, error) {
 
 	for _, dir := range dirs {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			logging.Debugf("Directory does not exist: %s", dir)
+			logger.Debugf("Directory does not exist: %s", dir)
 			continue // Skip if the directory does not exist
 		}
 		err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -54,12 +53,12 @@ func ExecuteScript(script string, args []string) error {
 		cmd = exec.Command(script, args...)
 	}
 
-	logging.Infof("Executing script: %s with args: %v", script, args)
+	logger.Infof("Executing script: %s with args: %v", script, args)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		logging.Errorf("Failed to execute script %s: %v", script, err)
+		logger.Errorf("Failed to execute script %s: %v", script, err)
 		return fmt.Errorf("failed to execute script %s: %w", script, err)
 	}
 
