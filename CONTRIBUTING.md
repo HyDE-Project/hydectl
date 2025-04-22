@@ -4,9 +4,8 @@ Thank you for your interest in contributing to hydectl ! We welcome contribution
 
 ## Table of Contents
 
-- [Contributing to \[Project Name\]](#contributing-to-hydectl)
+- [Contributing to the project](#contributing-to-hydectl)
   - [Table of Contents](#table-of-contents)
-  - [Code of Conduct](#code-of-conduct)
   - [How to Contribute](#how-to-contribute)
     - [Reporting Bugs](#reporting-bugs)
     - [Suggesting Enhancements](#suggesting-enhancements)
@@ -15,10 +14,6 @@ Thank you for your interest in contributing to hydectl ! We welcome contribution
     - [Pull Request Process](#pull-request-process)
   - [Getting Started](#getting-started)
   - [License](#license)
-
-## Code of Conduct
-
-Please note that we have a [Code of Conduct](CODE_OF_CONDUCT.md). By participating in this project, you agree to abide by its terms.
 
 ## How to Contribute
 
