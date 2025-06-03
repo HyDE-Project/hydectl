@@ -10,7 +10,6 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// ConfigFile represents a single configuration file with its metadata and hooks
 type ConfigFile struct {
 	Description string   `toml:"description"`
 	Path        string   `toml:"path"`
@@ -18,23 +17,20 @@ type ConfigFile struct {
 	PostHook    []string `toml:"post_hook"`
 }
 
-// AppConfig represents an application with its files and metadata
 type AppConfig struct {
 	Description string                `toml:"description"`
 	Icon        string                `toml:"icon"`
 	Files       map[string]ConfigFile `toml:"files"`
 }
 
-// ConfigRegistry represents the entire configuration registry
 type ConfigRegistry struct {
 	Apps map[string]AppConfig
 }
 
-// LoadConfigRegistry loads the configuration registry from TOML file
 func LoadConfigRegistry() (*ConfigRegistry, error) {
-	// Look for config-registry.toml in various locations
+
 	configPaths := []string{
-		"./test/config-registry.toml", // Development path
+		"./test/config-registry.toml",
 		filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "hydectl", "config-registry.toml"),
 		filepath.Join(os.Getenv("HOME"), ".config", "hydectl", "config-registry.toml"),
 		filepath.Join(os.Getenv("HOME"), ".local", "lib", "hydectl", "config-registry.toml"),
@@ -42,7 +38,6 @@ func LoadConfigRegistry() (*ConfigRegistry, error) {
 		"/usr/lib/hydectl/config-registry.toml",
 	}
 
-	// Handle XDG_CONFIG_HOME default
 	if os.Getenv("XDG_CONFIG_HOME") == "" {
 		configPaths[1] = filepath.Join(os.Getenv("HOME"), ".config", "hydectl", "config-registry.toml")
 	}
@@ -68,21 +63,18 @@ func LoadConfigRegistry() (*ConfigRegistry, error) {
 	return &registry, nil
 }
 
-// ExpandPath expands environment variables and tilde in file paths
 func ExpandPath(path string) string {
-	// Handle tilde expansion
+
 	if strings.HasPrefix(path, "~/") {
 		return filepath.Join(os.Getenv("HOME"), path[2:])
 	}
 
-	// Handle environment variable expansion like ${VAR} and ${VAR:-default}
 	envVarPattern := regexp.MustCompile(`\$\{([^}]+)\}`)
 
 	expanded := envVarPattern.ReplaceAllStringFunc(path, func(match string) string {
-		// Remove ${ and } to get the variable expression
+
 		varExpr := match[2 : len(match)-1]
 
-		// Check if it has a default value syntax VAR:-default
 		if strings.Contains(varExpr, ":-") {
 			parts := strings.SplitN(varExpr, ":-", 2)
 			varName := parts[0]
@@ -91,25 +83,22 @@ func ExpandPath(path string) string {
 			if value := os.Getenv(varName); value != "" {
 				return value
 			}
-			// Recursively expand the default value in case it contains variables
+
 			return ExpandPath(defaultValue)
 		}
 
-		// Simple variable expansion
 		return os.Getenv(varExpr)
 	})
 
-	// Handle simple $VAR syntax
 	simpleVarPattern := regexp.MustCompile(`\$([A-Za-z_][A-Za-z0-9_]*)`)
 	expanded = simpleVarPattern.ReplaceAllStringFunc(expanded, func(match string) string {
-		varName := match[1:] // Remove the $ prefix
+		varName := match[1:]
 		return os.Getenv(varName)
 	})
 
 	return expanded
 }
 
-// FileExists checks if a configuration file exists
 func (c *ConfigFile) FileExists() bool {
 	expandedPath := ExpandPath(c.Path)
 	_, err := os.Stat(expandedPath)

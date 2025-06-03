@@ -10,7 +10,6 @@ import (
 	"hydectl/internal/config"
 )
 
-// View renders the TUI with fzf-like preview
 func (m *Model) View() string {
 	if m.quitting {
 		return ""
@@ -28,19 +27,16 @@ func (m *Model) View() string {
 	return s.String()
 }
 
-// renderAppSelectionWithPreview renders the app selection view with preview pane
 func (m *Model) renderAppSelectionWithPreview() string {
 	var s strings.Builder
 
-	// Calculate layout dimensions
 	totalWidth := m.windowWidth
 	if totalWidth < 80 {
-		totalWidth = 80 // Minimum width
+		totalWidth = 80
 	}
 	listWidth := totalWidth / 2
-	previewWidth := totalWidth - listWidth - 3 // Account for separator
+	previewWidth := totalWidth - listWidth - 3
 
-	// Header
 	s.WriteString(ColorBrightCyan + "╭─" + strings.Repeat("─", totalWidth-4) + "─╮" + ColorReset + "\n")
 	headerText := "🏗️  HyDE Configuration Manager"
 	padding := (totalWidth - len(headerText) - 2) / 2
@@ -54,7 +50,6 @@ func (m *Model) renderAppSelectionWithPreview() string {
 	s.WriteString(ColorBrightCyan + " │" + ColorReset + "\n")
 	s.WriteString(ColorBrightCyan + "╰─" + strings.Repeat("─", totalWidth-4) + "─╯" + ColorReset + "\n")
 
-	// Search bar
 	if m.searchMode {
 		s.WriteString(ColorBrightYellow + "❯ " + ColorReset + ColorBold + "Search: " + ColorReset)
 		s.WriteString(ColorBrightGreen + m.searchQuery + "█" + ColorReset + "\n")
@@ -64,7 +59,6 @@ func (m *Model) renderAppSelectionWithPreview() string {
 		s.WriteString(ColorBrightBlack + "(press " + ColorReset + ColorBrightYellow + "/" + ColorReset + ColorBrightBlack + " to search)" + ColorReset + "\n\n")
 	}
 
-	// Prepare data for split panes
 	var displayList []string
 	if m.searchMode {
 		displayList = m.filteredList
@@ -72,29 +66,25 @@ func (m *Model) renderAppSelectionWithPreview() string {
 		displayList = m.appList
 	}
 
-	// Get current app for preview
 	var currentApp string
 	if len(displayList) > 0 && m.cursor < len(displayList) {
 		currentApp = displayList[m.cursor]
 	}
 
-	// Build left pane (application list)
 	leftPaneLines := m.buildAppList(displayList, listWidth)
 
-	// Build right pane (preview)
 	var rightPaneLines []string
 	if currentApp != "" {
 		rightPaneLines = m.buildAppPreviewLines(currentApp, previewWidth)
 	}
 
-	// Render split panes side by side
 	maxLines := len(leftPaneLines)
 	if len(rightPaneLines) > maxLines {
 		maxLines = len(rightPaneLines)
 	}
 
 	for i := 0; i < maxLines; i++ {
-		// Left pane content
+
 		var leftLine string
 		if i < len(leftPaneLines) {
 			leftLine = leftPaneLines[i]
@@ -102,7 +92,6 @@ func (m *Model) renderAppSelectionWithPreview() string {
 			leftLine = strings.Repeat(" ", listWidth)
 		}
 
-		// Right pane content
 		var rightLine string
 		if i < len(rightPaneLines) {
 			rightLine = rightPaneLines[i]
@@ -110,14 +99,12 @@ func (m *Model) renderAppSelectionWithPreview() string {
 			rightLine = strings.Repeat(" ", previewWidth)
 		}
 
-		// Combine with separator
 		s.WriteString(leftLine)
 		s.WriteString(ColorBrightBlack + " │ " + ColorReset)
 		s.WriteString(rightLine)
 		s.WriteString("\n")
 	}
 
-	// Footer
 	s.WriteString("\n")
 	s.WriteString(ColorBrightBlack + strings.Repeat("─", totalWidth) + ColorReset + "\n")
 	if m.searchMode {
@@ -135,10 +122,9 @@ func (m *Model) renderAppSelectionWithPreview() string {
 	return s.String()
 }
 
-// buildAppList creates the left pane lines for the application list
 func (m *Model) buildAppList(displayList []string, width int) []string {
 	var lines []string
-	maxDisplayItems := 15 // Limit number of items shown
+	maxDisplayItems := 15
 
 	for i := 0; i < maxDisplayItems && i < len(displayList); i++ {
 		app := displayList[i]
@@ -150,9 +136,9 @@ func (m *Model) buildAppList(displayList []string, width int) []string {
 
 		var line string
 		if i == m.cursor {
-			// Selected item with highlight
+
 			desc := appConfig.Description
-			maxDescLen := width - len(app) - 8 // Account for icon, arrow, spacing
+			maxDescLen := width - len(app) - 8
 			if len(desc) > maxDescLen {
 				desc = desc[:maxDescLen-3] + "..."
 			}
@@ -167,9 +153,9 @@ func (m *Model) buildAppList(displayList []string, width int) []string {
 				ColorReset)
 			lines = append(lines, line+strings.Repeat(" ", width-len(app)-len(desc)-8))
 		} else {
-			// Regular item with inline description
+
 			desc := appConfig.Description
-			maxDescLen := width - len(app) - 8 // Account for icon, spacing
+			maxDescLen := width - len(app) - 8
 			if len(desc) > maxDescLen {
 				desc = desc[:maxDescLen-3] + "..."
 			}
@@ -189,12 +175,10 @@ func (m *Model) buildAppList(displayList []string, width int) []string {
 	return lines
 }
 
-// buildAppPreviewLines creates the right pane lines for the application preview
 func (m *Model) buildAppPreviewLines(appName string, width int) []string {
 	appConfig := m.registry.Apps[appName]
 	var lines []string
 
-	// Preview header
 	icon := appConfig.Icon
 	if icon == "" {
 		icon = "⚙️"
@@ -208,14 +192,13 @@ func (m *Model) buildAppPreviewLines(appName string, width int) []string {
 	separatorLine := ColorBrightBlack + strings.Repeat("─", width) + ColorReset
 	lines = append(lines, separatorLine)
 
-	// List configuration files
 	var files []string
 	for fileName := range appConfig.Files {
 		files = append(files, fileName)
 	}
 	sort.Strings(files)
 
-	maxPreviewFiles := 10 // Limit preview files
+	maxPreviewFiles := 10
 	for i, fileName := range files {
 		if i >= maxPreviewFiles {
 			remainingCount := len(files) - maxPreviewFiles
@@ -227,7 +210,6 @@ func (m *Model) buildAppPreviewLines(appName string, width int) []string {
 
 		fileConfig := appConfig.Files[fileName]
 
-		// Check if file exists
 		exists := fileConfig.FileExists()
 
 		var fileLine string
@@ -247,12 +229,11 @@ func (m *Model) buildAppPreviewLines(appName string, width int) []string {
 				ColorReset)
 		}
 
-		// Truncate if too long
 		var maxFileLineLen int
 		if exists {
 			maxFileLineLen = len(fileName) + len(fileConfig.Description) + 5
 		} else {
-			maxFileLineLen = len(fileName) + len(fileConfig.Description) + 15 // for " (missing)"
+			maxFileLineLen = len(fileName) + len(fileConfig.Description) + 15
 		}
 
 		if maxFileLineLen > width {
@@ -279,17 +260,15 @@ func (m *Model) buildAppPreviewLines(appName string, width int) []string {
 			fileLine += ColorReset
 		}
 
-		// Pad to full width
 		displayLen := len(fileName) + len(fileConfig.Description) + 5
 		if !exists {
-			displayLen += 10 // " (missing)"
+			displayLen += 10
 		}
 		if displayLen < width {
 			fileLine += strings.Repeat(" ", width-displayLen)
 		}
 		lines = append(lines, fileLine)
 
-		// Show file path
 		pathLine := fmt.Sprintf("    %s📁 %s%s", ColorBrightBlack, fileConfig.Path, ColorReset)
 		pathDisplayLen := len(fileConfig.Path) + 7
 		if pathDisplayLen > width {
@@ -309,7 +288,6 @@ func (m *Model) buildAppPreviewLines(appName string, width int) []string {
 	return lines
 }
 
-// buildFileList creates the left pane lines for the file list
 func (m *Model) buildFileList(displayList []string, width int) []string {
 	var lines []string
 	appConfig := m.registry.Apps[m.currentApp]
@@ -320,10 +298,10 @@ func (m *Model) buildFileList(displayList []string, width int) []string {
 
 		var line string
 		if i == m.cursor {
-			// Selected file with highlight
+
 			if fileExists {
 				desc := fileConfig.Description
-				maxDescLen := width - len(fileName) - 10 // Account for icon, arrow, spacing
+				maxDescLen := width - len(fileName) - 10
 				if len(desc) > maxDescLen {
 					desc = desc[:maxDescLen-3] + "..."
 				}
@@ -337,9 +315,9 @@ func (m *Model) buildFileList(displayList []string, width int) []string {
 					ColorReset)
 				lines = append(lines, line+strings.Repeat(" ", width-len(fileName)-len(desc)-10))
 			} else {
-				// Missing file - grayed out selection
+
 				desc := fileConfig.Description
-				maxDescLen := width - len(fileName) - 15 // Account for missing indicator
+				maxDescLen := width - len(fileName) - 15
 				if len(desc) > maxDescLen {
 					desc = desc[:maxDescLen-3] + "..."
 				}
@@ -354,10 +332,10 @@ func (m *Model) buildFileList(displayList []string, width int) []string {
 				lines = append(lines, line+strings.Repeat(" ", width-len(fileName)-len(desc)-15))
 			}
 		} else {
-			// Regular file item
+
 			if fileExists {
 				desc := fileConfig.Description
-				maxDescLen := width - len(fileName) - 8 // Account for icon, spacing
+				maxDescLen := width - len(fileName) - 8
 				if len(desc) > maxDescLen {
 					desc = desc[:maxDescLen-3] + "..."
 				}
@@ -372,7 +350,7 @@ func (m *Model) buildFileList(displayList []string, width int) []string {
 				lines = append(lines, line+strings.Repeat(" ", width-len(fileName)-len(desc)-8))
 			} else {
 				desc := fileConfig.Description
-				maxDescLen := width - len(fileName) - 13 // Account for missing indicator
+				maxDescLen := width - len(fileName) - 13
 				if len(desc) > maxDescLen {
 					desc = desc[:maxDescLen-3] + "..."
 				}
@@ -392,13 +370,11 @@ func (m *Model) buildFileList(displayList []string, width int) []string {
 	return lines
 }
 
-// buildFilePreviewLines creates the right pane lines for file content preview
 func (m *Model) buildFilePreviewLines(fileName string, width int) []string {
 	var lines []string
 	appConfig := m.registry.Apps[m.currentApp]
 	fileConfig := appConfig.Files[fileName]
 
-	// Preview header
 	headerText := fmt.Sprintf("📄 %s", fileName)
 	headerLine := ColorBrightCyan + headerText + ColorReset
 	headerLine += strings.Repeat(" ", width-len(headerText))
@@ -407,7 +383,6 @@ func (m *Model) buildFilePreviewLines(fileName string, width int) []string {
 	separatorLine := ColorBrightBlack + strings.Repeat("─", width) + ColorReset
 	lines = append(lines, separatorLine)
 
-	// File info
 	infoLine := fmt.Sprintf("%sDescription:%s %s", ColorBrightYellow, ColorReset, fileConfig.Description)
 	if len(infoLine) > width {
 		infoLine = infoLine[:width-3] + "..."
@@ -422,18 +397,15 @@ func (m *Model) buildFilePreviewLines(fileName string, width int) []string {
 	pathLine += strings.Repeat(" ", width-len(pathLine))
 	lines = append(lines, pathLine)
 
-	// Add empty line
 	lines = append(lines, strings.Repeat(" ", width))
 
-	// Check if file exists and show preview
 	exists := fileConfig.FileExists()
 	if exists {
 		statusLine := ColorBrightGreen + "✓ File exists" + ColorReset
 		statusLine += strings.Repeat(" ", width-len("✓ File exists"))
 		lines = append(lines, statusLine)
 
-		// Try to read file content preview
-		lines = append(lines, strings.Repeat(" ", width)) // Empty line
+		lines = append(lines, strings.Repeat(" ", width))
 		previewHeaderLine := ColorBrightYellow + "File Content:" + ColorReset
 		previewHeaderLine += strings.Repeat(" ", width-len("File Content:"))
 		lines = append(lines, previewHeaderLine)
@@ -441,11 +413,9 @@ func (m *Model) buildFilePreviewLines(fileName string, width int) []string {
 		separatorLine := ColorBrightBlack + strings.Repeat("─", width) + ColorReset
 		lines = append(lines, separatorLine)
 
-		// Read and display file content
 		expandedPath := config.ExpandPath(fileConfig.Path)
 		allContent, _ := m.readFilePreviewWithScroll(expandedPath)
 
-		// Display content (viewport will handle scrolling)
 		for _, contentLine := range allContent {
 			if len(contentLine) > width {
 				contentLine = contentLine[:width-3] + "..."
@@ -459,7 +429,7 @@ func (m *Model) buildFilePreviewLines(fileName string, width int) []string {
 		statusLine += strings.Repeat(" ", width-len("❌ File does not exist"))
 		lines = append(lines, statusLine)
 
-		lines = append(lines, strings.Repeat(" ", width)) // Empty line
+		lines = append(lines, strings.Repeat(" ", width))
 		helpLine := ColorBrightBlack + "File will be created when selected" + ColorReset
 		helpLine += strings.Repeat(" ", width-len("File will be created when selected"))
 		lines = append(lines, helpLine)
@@ -468,11 +438,9 @@ func (m *Model) buildFilePreviewLines(fileName string, width int) []string {
 	return lines
 }
 
-// readFilePreview reads the first N lines from a file for preview
 func (m *Model) readFilePreview(filePath string, maxLines int) []string {
 	var lines []string
 
-	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return []string{ColorDim + "File does not exist" + ColorReset}
 	}
@@ -487,25 +455,23 @@ func (m *Model) readFilePreview(filePath string, maxLines int) []string {
 	lineCount := 0
 	totalLines := 0
 
-	// First pass: count total lines for large files
 	tempScanner := bufio.NewScanner(file)
 	for tempScanner.Scan() {
 		totalLines++
-		if totalLines > maxLines*2 { // Stop counting if it's way too large
+		if totalLines > maxLines*2 {
 			break
 		}
 	}
 
-	// Reset to beginning
 	file.Seek(0, 0)
 	scanner = bufio.NewScanner(file)
 
 	for scanner.Scan() && lineCount < maxLines {
 		line := scanner.Text()
-		// Remove any control characters and limit line length
+
 		cleanLine := strings.Map(func(r rune) rune {
 			if r < 32 && r != '\t' {
-				return -1 // Remove control characters except tab
+				return -1
 			}
 			return r
 		}, line)
@@ -513,7 +479,6 @@ func (m *Model) readFilePreview(filePath string, maxLines int) []string {
 		lineCount++
 	}
 
-	// If there are more lines, add an indicator
 	if totalLines > maxLines {
 		moreLines := totalLines - maxLines
 		if totalLines > maxLines*2 {
@@ -534,11 +499,9 @@ func (m *Model) readFilePreview(filePath string, maxLines int) []string {
 	return lines
 }
 
-// readFilePreviewWithScroll reads file content with scroll support and returns all content plus total line count
 func (m *Model) readFilePreviewWithScroll(filePath string) ([]string, int) {
 	var lines []string
 
-	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return []string{ColorDim + "File does not exist" + ColorReset}, 1
 	}
@@ -552,20 +515,18 @@ func (m *Model) readFilePreviewWithScroll(filePath string) ([]string, int) {
 	scanner := bufio.NewScanner(file)
 	lineCount := 0
 
-	// Read all lines for scrolling
 	for scanner.Scan() {
 		line := scanner.Text()
-		// Remove any control characters and limit line length
+
 		cleanLine := strings.Map(func(r rune) rune {
 			if r < 32 && r != '\t' {
-				return -1 // Remove control characters except tab
+				return -1
 			}
 			return r
 		}, line)
 		lines = append(lines, cleanLine)
 		lineCount++
 
-		// Safety limit for very large files
 		if lineCount > 10000 {
 			lines = append(lines, ColorBrightBlack+"... (file too large, showing first 10000 lines)"+ColorReset)
 			break
@@ -584,17 +545,15 @@ func (m *Model) readFilePreviewWithScroll(filePath string) ([]string, int) {
 	return lines, lineCount
 }
 
-// renderFileSelection renders the file selection view with preview pane
 func (m *Model) renderFileSelection() string {
 	var s strings.Builder
 
-	// Calculate layout dimensions
 	totalWidth := m.windowWidth
 	if totalWidth < 80 {
-		totalWidth = 80 // Minimum width
+		totalWidth = 80
 	}
 	listWidth := totalWidth / 2
-	previewWidth := totalWidth - listWidth - 3 // Account for separator
+	previewWidth := totalWidth - listWidth - 3
 
 	appConfig := m.registry.Apps[m.currentApp]
 	icon := appConfig.Icon
@@ -602,7 +561,6 @@ func (m *Model) renderFileSelection() string {
 		icon = "⚙️"
 	}
 
-	// Header
 	s.WriteString(ColorBrightCyan + "╭─" + strings.Repeat("─", totalWidth-4) + "─╮" + ColorReset + "\n")
 	headerText := fmt.Sprintf("%s %s Configuration", icon, m.currentApp)
 	padding := (totalWidth - len(headerText) - 2) / 2
@@ -616,7 +574,6 @@ func (m *Model) renderFileSelection() string {
 	s.WriteString(ColorBrightCyan + " │" + ColorReset + "\n")
 	s.WriteString(ColorBrightCyan + "╰─" + strings.Repeat("─", totalWidth-4) + "─╯" + ColorReset + "\n")
 
-	// Search bar for files
 	if m.searchMode {
 		s.WriteString(ColorBrightYellow + "❯ " + ColorReset + ColorBold + "Search files: " + ColorReset)
 		s.WriteString(ColorBrightGreen + m.searchQuery + "█" + ColorReset + "\n")
@@ -626,7 +583,6 @@ func (m *Model) renderFileSelection() string {
 		s.WriteString(ColorBrightBlack + "(press " + ColorReset + ColorBrightYellow + "/" + ColorReset + ColorBrightBlack + " to search)" + ColorReset + "\n\n")
 	}
 
-	// Prepare data for split panes
 	var displayList []string
 	if m.searchMode {
 		displayList = m.filteredList
@@ -634,35 +590,32 @@ func (m *Model) renderFileSelection() string {
 		displayList = m.fileList
 	}
 
-	// Get current file for preview
 	var currentFile string
 	if len(displayList) > 0 && m.cursor < len(displayList) {
 		currentFile = displayList[m.cursor]
 	}
 
-	// Build left pane (file list)
 	leftPaneLines := m.buildFileList(displayList, listWidth)
 
-	// Build right pane (file content preview with scrolling)
 	var rightPaneContent string
 	if currentFile != "" {
 		rightPaneLines := m.buildFilePreviewLines(currentFile, previewWidth)
 		rightPaneContent = strings.Join(rightPaneLines, "\n")
 
-		// Update viewport with the file content
 		m.previewViewport.Width = previewWidth
-		m.previewViewport.Height = 25 // Available preview height
+		m.previewViewport.Height = 25
 		m.previewViewport.SetContent(rightPaneContent)
 	}
 
-	// Render split panes side by side
 	maxLines := len(leftPaneLines)
-	if maxLines < 25 { // Minimum height for viewport
+	if maxLines < 25 {
 		maxLines = 25
 	}
 
+	scrollbar := m.renderScrollbar(25, m.previewViewport.TotalLineCount(), m.previewViewport.YOffset)
+
 	for i := 0; i < maxLines; i++ {
-		// Left pane content
+
 		var leftLine string
 		if i < len(leftPaneLines) {
 			leftLine = leftPaneLines[i]
@@ -670,13 +623,12 @@ func (m *Model) renderFileSelection() string {
 			leftLine = strings.Repeat(" ", listWidth)
 		}
 
-		// Right pane content from viewport
 		var rightLine string
 		if currentFile != "" && i < len(strings.Split(m.previewViewport.View(), "\n")) {
 			viewportLines := strings.Split(m.previewViewport.View(), "\n")
 			if i < len(viewportLines) {
 				rightLine = viewportLines[i]
-				// Ensure proper width
+
 				if len(rightLine) < previewWidth {
 					rightLine += strings.Repeat(" ", previewWidth-len(rightLine))
 				}
@@ -687,18 +639,24 @@ func (m *Model) renderFileSelection() string {
 			rightLine = strings.Repeat(" ", previewWidth)
 		}
 
-		// Combine with separator
+		var scrollbarLine string
+		if i < len(scrollbar) {
+			scrollbarLine = scrollbar[i]
+		} else {
+			scrollbarLine = " "
+		}
+
 		s.WriteString(leftLine)
 		s.WriteString(ColorBrightBlack + " │ " + ColorReset)
 		s.WriteString(rightLine)
+		s.WriteString(ColorBrightBlack + " " + ColorReset)
+		s.WriteString(scrollbarLine)
 		s.WriteString("\n")
 	}
 
-	// Footer with scroll indicators
 	s.WriteString("\n")
 	s.WriteString(ColorBrightBlack + strings.Repeat("─", totalWidth) + ColorReset + "\n")
 
-	// Show scroll information if preview is scrollable
 	scrollInfo := ""
 	if m.previewViewport.TotalLineCount() > 25 && currentFile != "" {
 		scrollInfo = fmt.Sprintf(" [%d/%d lines] ", m.previewViewport.YOffset+1, m.previewViewport.TotalLineCount())
@@ -723,4 +681,95 @@ func (m *Model) renderFileSelection() string {
 	}
 
 	return s.String()
+}
+
+// renderScrollbar creates a visual scrollbar for the preview pane
+func (m *Model) renderScrollbar(height int, totalLines int, currentOffset int) []string {
+	var scrollbar []string
+
+	if totalLines <= height {
+		// No scrollbar needed if content fits
+		for i := 0; i < height; i++ {
+			scrollbar = append(scrollbar, " ")
+		}
+		return scrollbar
+	}
+
+	// Calculate scrollbar thumb position and size
+	thumbSize := max(1, (height*height)/totalLines)
+	if thumbSize > height {
+		thumbSize = height
+	}
+
+	// Calculate thumb position
+	scrollRatio := float64(currentOffset) / float64(totalLines-height)
+	if scrollRatio < 0 {
+		scrollRatio = 0
+	}
+	if scrollRatio > 1 {
+		scrollRatio = 1
+	}
+
+	thumbPos := int(scrollRatio * float64(height-thumbSize))
+	if thumbPos < 0 {
+		thumbPos = 0
+	}
+	if thumbPos+thumbSize > height {
+		thumbPos = height - thumbSize
+	}
+
+	// Build scrollbar
+	for i := 0; i < height; i++ {
+		if i >= thumbPos && i < thumbPos+thumbSize {
+			scrollbar = append(scrollbar, ColorBrightBlue+"█"+ColorReset) // Thumb
+		} else if i == 0 || i == height-1 {
+			scrollbar = append(scrollbar, ColorBrightBlack+"┃"+ColorReset) // Track ends
+		} else {
+			scrollbar = append(scrollbar, ColorBrightBlack+"│"+ColorReset) // Track
+		}
+	}
+
+	return scrollbar
+}
+
+// renderSmoothScrollIndicator creates a smooth scroll position indicator
+func (m *Model) renderSmoothScrollIndicator(currentLine, totalLines int) string {
+	if totalLines <= 0 {
+		return ""
+	}
+
+	percentage := (currentLine * 100) / totalLines
+	if percentage > 100 {
+		percentage = 100
+	}
+
+	// Create a visual progress bar
+	barWidth := 20
+	filled := (percentage * barWidth) / 100
+
+	var bar strings.Builder
+	bar.WriteString(ColorBrightCyan + "[" + ColorReset)
+
+	for i := 0; i < barWidth; i++ {
+		if i < filled {
+			bar.WriteString(ColorBrightGreen + "█" + ColorReset)
+		} else if i == filled && percentage%5 != 0 {
+			bar.WriteString(ColorBrightYellow + "▌" + ColorReset) // Half block for smooth transition
+		} else {
+			bar.WriteString(ColorBrightBlack + "░" + ColorReset)
+		}
+	}
+
+	bar.WriteString(ColorBrightCyan + "]" + ColorReset)
+	bar.WriteString(fmt.Sprintf(" %d%%", percentage))
+
+	return bar.String()
+}
+
+// max returns the maximum of two integers
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

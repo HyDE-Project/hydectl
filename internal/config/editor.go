@@ -7,15 +7,12 @@ import (
 	"path/filepath"
 )
 
-// EditConfigFile opens a configuration file in the user's preferred editor
 func EditConfigFile(appName, fileName string, fileConfig ConfigFile) {
 	fmt.Printf("\n🔧 Editing %s - %s\n", appName, fileConfig.Description)
 	fmt.Printf("📁 %s\n\n", fileConfig.Path)
 
-	// Expand tilde in path
 	configPath := ExpandPath(fileConfig.Path)
 
-	// Run pre-hook if defined
 	if len(fileConfig.PreHook) > 0 {
 		fmt.Println("⏳ Running pre-hook...")
 		if err := runHook(fileConfig.PreHook); err != nil {
@@ -23,16 +20,14 @@ func EditConfigFile(appName, fileName string, fileConfig ConfigFile) {
 		}
 	}
 
-	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
 		fmt.Printf("Error creating directory: %v\n", err)
 		return
 	}
 
-	// Determine editor
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
-		// Try common editors
+
 		editors := []string{"nvim", "vim", "nano", "code", "gedit"}
 		for _, e := range editors {
 			if _, err := exec.LookPath(e); err == nil {
@@ -47,7 +42,6 @@ func EditConfigFile(appName, fileName string, fileConfig ConfigFile) {
 		return
 	}
 
-	// Launch editor
 	fmt.Printf("🚀 Opening %s...\n", editor)
 	cmd := exec.Command(editor, configPath)
 	cmd.Stdin = os.Stdin
@@ -59,7 +53,6 @@ func EditConfigFile(appName, fileName string, fileConfig ConfigFile) {
 		return
 	}
 
-	// Run post-hook if defined
 	if len(fileConfig.PostHook) > 0 {
 		fmt.Println("\n⏳ Running post-hook...")
 		if err := runHook(fileConfig.PostHook); err != nil {

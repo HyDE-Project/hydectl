@@ -28,17 +28,14 @@ func runConfigCommand(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// If no apps in registry, show helpful message
 	if len(registry.Apps) == 0 {
 		fmt.Println("No applications found in config registry.")
 		fmt.Println("Please add applications to your config-registry.toml file.")
 		return
 	}
 
-	// Initialize the TUI model
 	model := tui.NewModel(registry)
 
-	// Start the Bubble Tea program
 	p := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	finalModel, err := p.Run()
 	if err != nil {
@@ -46,7 +43,6 @@ func runConfigCommand(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Handle the final result
 	if m, ok := finalModel.(*tui.Model); ok && !m.IsQuitting() {
 		selectedApp := m.GetSelectedApp()
 		selectedFile := m.GetSelectedFile()

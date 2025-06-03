@@ -12,12 +12,6 @@ path = "${XDG_CONFIG_HOME:-$HOME/.config}/kitty/kitty.conf"
 pre_hook = ["bash", "-c", "echo 'Editing Kitty main config...'"]
 post_hook = ["bash", "-c", "killall -SIGUSR1 kitty || true"]
 
-[kitty.files.theme]
-description = "Kitty Theme Configuration"
-path = "${XDG_CONFIG_HOME:-$HOME/.config}/kitty/theme.conf"
-pre_hook = ["bash", "-c", "echo 'Editing Kitty theme...'"]
-post_hook = ["bash", "-c", "killall -SIGUSR1 kitty || true"]
-
 [zsh]
 description = "Z Shell Configuration"
 icon = "🐚"
@@ -28,17 +22,10 @@ path = "$HOME/.zshrc"
 pre_hook = ["bash", "-c", "echo 'Editing .zshrc...'"]
 post_hook = ["bash", "-c", "echo 'Zsh config updated. Restart shell to apply changes.'"]
 
-[zsh.files.aliases]
+[zsh.files.user]
 description = "Zsh Aliases"
-path = "${XDG_CONFIG_HOME:-$HOME/.config}/zsh/aliases.zsh"
-pre_hook = ["bash", "-c", "mkdir -p ${XDG_CONFIG_HOME:-$HOME/.config}/zsh"]
-post_hook = ["bash", "-c", "source $HOME/.zshrc 2>/dev/null || true"]
+path = "$HOME/.user.zsh"
 
-[zsh.files.functions]
-description = "Zsh Functions"
-path = "${XDG_CONFIG_HOME:-$HOME/.config}/zsh/functions.zsh"
-pre_hook = ["bash", "-c", "mkdir -p ${XDG_CONFIG_HOME:-$HOME/.config}/zsh"]
-post_hook = ["bash", "-c", "source $HOME/.zshrc 2>/dev/null || true"]
 
 [dunst]
 description = "Dunst Notification Daemon"
@@ -50,27 +37,39 @@ path = "${XDG_CONFIG_HOME:-$HOME/.config}/dunst/dunstrc"
 pre_hook = ["bash", "-c", "echo 'Editing Dunst config...'"]
 post_hook = ["bash", "-c", "killall dunst && dunst & disown"]
 
+[dunst.files.user]
+description = "Dunst Configuration"
+path = "${XDG_CONFIG_HOME:-$HOME/.config}/dunst/dunst.conf"
+pre_hook = ["bash", "-c", "echo 'Editing Dunst config...'"]
+post_hook = ["bash", "-c", "killall dunst && dunst & disown"]
+
+
 [hyprland]
 description = "Hyprland Window Manager"
 icon = "🪟"
 
 [hyprland.files.main]
 description = "Main Hyprland Configuration"
-path = "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.conf"
+path = "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/userprefs.conf"
 pre_hook = ["bash", "-c", "echo 'Editing Hyprland main config...'"]
-post_hook = ["bash", "-c", "hyprctl reload || true"]
 
 [hyprland.files.keybinds]
 description = "Hyprland Keybindings"
-path = "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/keybinds.conf"
+path = "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/keybindings.conf"
 pre_hook = ["bash", "-c", "echo 'Editing Hyprland keybinds...'"]
-post_hook = ["bash", "-c", "hyprctl reload || true"]
 
-[hyprland.files.rules]
+[hyprland.files.windowrules]
 description = "Hyprland Window Rules"
 path = "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/windowrules.conf"
 pre_hook = ["bash", "-c", "echo 'Editing Hyprland window rules...'"]
-post_hook = ["bash", "-c", "hyprctl reload || true"]
+
+[hyprland.files.nvidia]
+description = "Hyprland NVIDIA Settings"
+path = "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/nvidia.conf"
+pre_hook = ["bash", "-c", "echo 'Editing Hyprland NVIDIA settings...'"]
+
+
+
 
 [waybar]
 description = "Waybar Status Bar"
@@ -103,19 +102,3 @@ description = "Rofi Theme"
 path = "${XDG_CONFIG_HOME:-$HOME/.config}/rofi/themes/current.rasi"
 pre_hook = ["bash", "-c", "mkdir -p ${XDG_CONFIG_HOME:-$HOME/.config}/rofi/themes"]
 post_hook = ["bash", "-c", "echo 'Rofi theme updated.'"]
-
-[gtk]
-description = "GTK Theme Configuration"
-icon = "🎨"
-
-[gtk.files.gtk3]
-description = "GTK 3 Settings"
-path = "${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0/settings.ini"
-pre_hook = ["bash", "-c", "mkdir -p ${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0"]
-post_hook = ["bash", "-c", "echo 'GTK 3 settings updated.'"]
-
-[gtk.files.gtk4]
-description = "GTK 4 Settings"
-path = "${XDG_CONFIG_HOME:-$HOME/.config}/gtk-4.0/settings.ini"
-pre_hook = ["bash", "-c", "mkdir -p ${XDG_CONFIG_HOME:-$HOME/.config}/gtk-4.0"]
-post_hook = ["bash", "-c", "echo 'GTK 4 settings updated.'"]
