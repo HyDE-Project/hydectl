@@ -5,9 +5,11 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"hydectl/internal/config"
 )
@@ -48,6 +50,8 @@ type Model struct {
 
 	previewViewport  viewport.Model
 	fileTrayViewport viewport.Model
+
+	lastScrollTime time.Time
 }
 
 func NewModel(registry *config.ConfigRegistry) *Model {
@@ -93,7 +97,59 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateDimensions()
 
 	case tea.MouseMsg:
-		return m.handleMouseEvent(msg)
+
+		if msg.Type == tea.MouseWheelUp || msg.Type == tea.MouseWheelDown {
+			now := time.Now()
+			if now.Sub(m.lastScrollTime) < 50*time.Millisecond {
+				return m, nil
+			}
+			m.lastScrollTime = now
+		}
+
+		if msg.X < m.tabWidth {
+			m.focusArea = AppTabsFocus
+		} else if m.expandedAppTab != -1 && msg.X < m.tabWidth+m.trayWidth {
+			m.focusArea = FileTrayFocus
+		} else {
+			m.focusArea = PreviewFocus
+		}
+
+		switch msg.Type {
+		case tea.MouseWheelUp:
+			if m.focusArea == AppTabsFocus {
+				if m.activeAppTab > 0 {
+					m.activeAppTab--
+					m.expandAppTab(m.activeAppTab)
+				}
+			} else if m.focusArea == FileTrayFocus {
+				if m.activeFileTab > 0 {
+					m.activeFileTab--
+					if len(m.fileList) > 0 {
+						m.updatePreview(m.fileList[m.activeFileTab])
+					}
+				}
+			} else if m.focusArea == PreviewFocus {
+				m.previewViewport.LineUp(1)
+			}
+
+		case tea.MouseWheelDown:
+			if m.focusArea == AppTabsFocus {
+				if m.activeAppTab < len(m.appList)-1 {
+					m.activeAppTab++
+					m.expandAppTab(m.activeAppTab)
+				}
+			} else if m.focusArea == FileTrayFocus {
+				if m.activeFileTab < len(m.fileList)-1 {
+					m.activeFileTab++
+					if len(m.fileList) > 0 {
+						m.updatePreview(m.fileList[m.activeFileTab])
+					}
+				}
+			} else if m.focusArea == PreviewFocus {
+				m.previewViewport.LineDown(1)
+			}
+		}
+		return m, nil
 
 	case tea.KeyMsg:
 		if m.searchMode {
@@ -116,47 +172,57 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "shift+tab":
 			m.cycleFocus(-1)
 
-		case "enter":
-			return m.handleEnter()
-
-		case "up", "k":
-			m.navigateUp()
-
-		case "down", "j":
-			m.navigateDown()
-
 		case "left", "h":
+
 			if m.focusArea == FileTrayFocus {
-				m.expandedAppTab = -1
 				m.focusArea = AppTabsFocus
 			} else if m.focusArea == PreviewFocus {
 				m.focusArea = FileTrayFocus
 			}
 
 		case "right", "l":
+
 			if m.focusArea == AppTabsFocus && m.expandedAppTab != -1 {
 				m.focusArea = FileTrayFocus
 			} else if m.focusArea == FileTrayFocus {
 				m.focusArea = PreviewFocus
 			}
 
-		case "space":
+		case "enter":
+			return m.handleEnter()
+
+		case "up", "k":
 			if m.focusArea == AppTabsFocus {
-				if m.expandedAppTab == m.activeAppTab {
-					m.expandedAppTab = -1
-				} else {
+				if m.activeAppTab > 0 {
+					m.activeAppTab--
 					m.expandAppTab(m.activeAppTab)
 				}
+			} else if m.focusArea == FileTrayFocus {
+				if m.activeFileTab > 0 {
+					m.activeFileTab--
+					if len(m.fileList) > 0 {
+						m.updatePreview(m.fileList[m.activeFileTab])
+					}
+				}
+			} else if m.focusArea == PreviewFocus {
+				m.previewViewport.LineUp(1)
 			}
 
-		case "pgup", "ctrl+u":
-			if m.focusArea == PreviewFocus {
-				m.previewViewport.LineUp(10)
-			}
-
-		case "pgdn", "ctrl+d":
-			if m.focusArea == PreviewFocus {
-				m.previewViewport.LineDown(10)
+		case "down", "j":
+			if m.focusArea == AppTabsFocus {
+				if m.activeAppTab < len(m.appList)-1 {
+					m.activeAppTab++
+					m.expandAppTab(m.activeAppTab)
+				}
+			} else if m.focusArea == FileTrayFocus {
+				if m.activeFileTab < len(m.fileList)-1 {
+					m.activeFileTab++
+					if len(m.fileList) > 0 {
+						m.updatePreview(m.fileList[m.activeFileTab])
+					}
+				}
+			} else if m.focusArea == PreviewFocus {
+				m.previewViewport.LineDown(1)
 			}
 		}
 	}
@@ -250,8 +316,8 @@ func (m *Model) expandAppTab(appIndex int) {
 		m.expandedAppTab = appIndex
 		m.currentApp = m.appList[appIndex]
 		m.loadFileList()
-		m.focusArea = FileTrayFocus
 		m.activeFileTab = 0
+
 	}
 }
 
@@ -301,33 +367,16 @@ func (m *Model) updatePreview(fileName string) {
 		return
 	}
 
-	var lines []string
-
-	headerText := fileName
-	lines = append(lines, ColorBrightCyan+headerText+ColorReset)
-	lines = append(lines, ColorBrightBlack+strings.Repeat("─", len(headerText))+ColorReset)
-	lines = append(lines, "")
-
-	lines = append(lines, ColorBrightYellow+"Description:"+ColorReset+" "+fileConfig.Description)
-	lines = append(lines, ColorBrightYellow+"Path:"+ColorReset+" "+fileConfig.Path)
-	lines = append(lines, "")
-
+	var contentLines []string
 	if fileConfig.FileExists() {
-		lines = append(lines, ColorBrightGreen+"✓ File exists"+ColorReset)
-		lines = append(lines, "")
-		lines = append(lines, ColorBrightYellow+"Content:"+ColorReset)
-		lines = append(lines, ColorBrightBlack+strings.Repeat("─", 40)+ColorReset)
-
 		expandedPath := config.ExpandPath(fileConfig.Path)
 		content, _ := m.readFileContent(expandedPath)
-		lines = append(lines, content...)
+		contentLines = content
 	} else {
-		lines = append(lines, ColorBrightRed+"❌ File does not exist"+ColorReset)
-		lines = append(lines, "")
-		lines = append(lines, ColorBrightBlack+"File will be created when selected"+ColorReset)
+		contentLines = []string{}
 	}
 
-	m.previewViewport.SetContent(strings.Join(lines, "\n"))
+	m.previewViewport.SetContent(strings.Join(contentLines, "\n"))
 }
 
 func (m *Model) readFileContent(filePath string) ([]string, error) {
@@ -339,13 +388,21 @@ func (m *Model) readFileContent(filePath string) ([]string, error) {
 func (m *Model) readFilePreviewWithScroll(filePath string) ([]string, int) {
 	var lines []string
 
+	ColorBrightBlack := lipgloss.Color("240")
+	ColorBrightRed := lipgloss.Color("196")
+	ColorDim := lipgloss.Color("245")
+
+	sepStyle := lipgloss.NewStyle().Foreground(ColorBrightBlack)
+	errStyle := lipgloss.NewStyle().Foreground(ColorBrightRed).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(ColorDim)
+
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return []string{ColorDim + "File does not exist" + ColorReset}, 1
+		return []string{dimStyle.Render("File does not exist")}, 1
 	}
 
 	file, err := os.Open(filePath)
 	if err != nil {
-		return []string{ColorBrightRed + "Error reading file: " + err.Error() + ColorReset}, 1
+		return []string{errStyle.Render("Error reading file: " + err.Error())}, 1
 	}
 	defer file.Close()
 
@@ -365,17 +422,17 @@ func (m *Model) readFilePreviewWithScroll(filePath string) ([]string, int) {
 		lineCount++
 
 		if lineCount > 10000 {
-			lines = append(lines, ColorBrightBlack+"... (file too large, showing first 10000 lines)"+ColorReset)
+			lines = append(lines, sepStyle.Render("... (file too large, showing first 10000 lines)"))
 			break
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		lines = append(lines, ColorBrightRed+"Error reading file: "+err.Error()+ColorReset)
+		lines = append(lines, errStyle.Render("Error reading file: "+err.Error()))
 	}
 
 	if lineCount == 0 {
-		lines = append(lines, ColorBrightBlack+"(empty file)"+ColorReset)
+		lines = append(lines, sepStyle.Render("(empty file)"))
 		return lines, 1
 	}
 
@@ -473,12 +530,12 @@ func (m *Model) handleMouseEvent(msg tea.MouseMsg) (*Model, tea.Cmd) {
 	switch msg.Type {
 	case tea.MouseWheelUp:
 		if m.focusArea == PreviewFocus {
-			m.previewViewport.LineUp(3)
+			m.previewViewport.LineUp(1)
 		}
 
 	case tea.MouseWheelDown:
 		if m.focusArea == PreviewFocus {
-			m.previewViewport.LineDown(3)
+			m.previewViewport.LineDown(1)
 		}
 
 	case tea.MouseLeft:

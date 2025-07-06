@@ -30,7 +30,7 @@ var (
 	focusedTabStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("15")).
-			Background(lipgloss.Color("57")).
+			Background(lipgloss.Color("4")).
 			Padding(0, 1)
 
 	activeFileStyle = lipgloss.NewStyle().
@@ -53,6 +53,11 @@ var (
 			Border(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color("238"))
 
+	focusedColumnStyle = lipgloss.NewStyle().
+				Border(lipgloss.NormalBorder()).
+				BorderForeground(lipgloss.Color("1")).
+				Bold(true)
+
 	footerStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("244")).
 			Background(lipgloss.Color("235")).
@@ -66,6 +71,13 @@ func (m *Model) View() string {
 
 	m.updateDimensions()
 
+	if m.expandedAppTab == -1 && len(m.appList) > 0 {
+		m.expandedAppTab = 0
+		m.activeAppTab = 0
+		m.currentApp = m.appList[0]
+		m.loadFileList()
+	}
+
 	var sections []string
 
 	header := headerStyle.Render("🏗️HyDE User Config Manager")
@@ -74,10 +86,85 @@ func (m *Model) View() string {
 	mainContent := m.renderMainContent()
 	sections = append(sections, mainContent)
 
+	detailsBar := m.renderDetailsBar()
+	sections = append(sections, detailsBar)
+
 	footer := m.renderFooter()
 	sections = append(sections, footer)
 
 	return lipgloss.JoinVertical(lipgloss.Left, sections...)
+}
+
+func (m *Model) renderDetailsBar() string {
+	ColorBrightCyan := lipgloss.Color("51")
+	ColorBrightBlack := lipgloss.Color("240")
+	ColorBrightYellow := lipgloss.Color("226")
+	ColorBrightGreen := lipgloss.Color("82")
+	ColorBrightRed := lipgloss.Color("196")
+
+	barStyle := lipgloss.NewStyle().
+		Foreground(ColorBrightCyan).
+		Background(lipgloss.Color("235")).
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(ColorBrightCyan).
+		Padding(0, 1)
+	sepStyle := lipgloss.NewStyle().Foreground(ColorBrightBlack)
+	labelStyle := lipgloss.NewStyle().Foreground(ColorBrightYellow).Bold(true)
+	valueStyle := lipgloss.NewStyle().Foreground(ColorBrightBlack)
+	okStyle := lipgloss.NewStyle().Foreground(ColorBrightGreen).Bold(true)
+	errStyle := lipgloss.NewStyle().Foreground(ColorBrightRed).Bold(true)
+
+	var info string
+
+	activeAppTab := m.activeAppTab
+	if m.focusArea == AppTabsFocus && (activeAppTab < 0 || activeAppTab >= len(m.appList)) && len(m.appList) > 0 {
+		activeAppTab = 0
+	}
+
+	switch m.focusArea {
+	case AppTabsFocus:
+		if activeAppTab >= 0 && activeAppTab < len(m.appList) {
+			appName := m.appList[activeAppTab]
+			appConfig := m.registry.Apps[appName]
+			icon := appConfig.Icon
+			if icon == "" {
+				icon = "⚙️"
+			}
+			info = labelStyle.Render("App:") + " " + valueStyle.Render(icon+" "+appName)
+			if appConfig.Description != "" {
+				info += "  " + labelStyle.Render("Description:") + " " + valueStyle.Render(appConfig.Description)
+			}
+		}
+	case FileTrayFocus:
+		if m.activeFileTab >= 0 && m.activeFileTab < len(m.fileList) {
+			fileName := m.fileList[m.activeFileTab]
+			fileConfig := m.registry.Apps[m.currentApp].Files[fileName]
+			info = labelStyle.Render("File:") + " " + valueStyle.Render(fileName)
+			if fileConfig.Description != "" {
+				info += "  " + labelStyle.Render("Description:") + " " + valueStyle.Render(fileConfig.Description)
+			}
+			if fileConfig.FileExists() {
+				info += "  " + okStyle.Render("✓ Exists")
+			} else {
+				info += "  " + errStyle.Render("❌ Missing")
+			}
+		}
+	case PreviewFocus:
+		if m.activeFileTab >= 0 && m.activeFileTab < len(m.fileList) {
+			fileName := m.fileList[m.activeFileTab]
+			fileConfig := m.registry.Apps[m.currentApp].Files[fileName]
+			info = labelStyle.Render("Preview:") + " " + valueStyle.Render(fileName)
+			if fileConfig.Description != "" {
+				info += "  " + labelStyle.Render("Description:") + " " + valueStyle.Render(fileConfig.Description)
+			}
+		}
+	}
+
+	if info == "" {
+		info = sepStyle.Render("No selection. Use arrows to navigate.")
+	}
+
+	return barStyle.Width(m.windowWidth - 5).Render(info)
 }
 
 func (m *Model) renderMainContent() string {
@@ -86,28 +173,63 @@ func (m *Model) renderMainContent() string {
 	appColumn := m.renderAppColumn()
 	columns = append(columns, appColumn)
 
+	fileColumnPresent := false
 	if m.expandedAppTab != -1 {
 		fileColumn := m.renderFileColumn()
 		columns = append(columns, fileColumn)
+		fileColumnPresent = true
 	}
 
-	previewColumn := m.renderPreviewColumn()
+	usedWidth := m.tabWidth
+	if fileColumnPresent {
+		usedWidth += m.trayWidth
+	}
+
+	previewWidth := m.windowWidth - usedWidth - 10
+	if previewWidth < 10 {
+		previewWidth = 10
+	}
+
+	previewColumn := m.renderPreviewColumnWithWidth(previewWidth)
 	columns = append(columns, previewColumn)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, columns...)
 }
 
+func (m *Model) renderPreviewColumnWithWidth(width int) string {
+	var contentBlock string
+
+	if m.expandedAppTab != -1 && len(m.fileList) > 0 && m.activeFileTab < len(m.fileList) {
+		contentBlock = m.previewViewport.View()
+	} else {
+		contentBlock = ""
+	}
+
+	style := columnStyle
+	if m.focusArea == PreviewFocus {
+		style = focusedColumnStyle
+	}
+	return style.
+		Width(width).
+		Height(m.windowHeight - 8).
+		Render(contentBlock)
+}
+
+func (m *Model) renderPreviewColumn() string {
+	return m.renderPreviewColumnWithWidth(m.previewWidth)
+}
+
 func (m *Model) renderAppColumn() string {
 	var content []string
 
-	if m.searchMode {
+	if m.searchMode && m.focusArea == AppTabsFocus {
 		searchBar := fmt.Sprintf("🔍 %s█", m.searchQuery)
 		content = append(content, searchBar)
 		content = append(content, "")
 	}
 
 	displayList := m.appList
-	if m.searchMode && len(m.filteredApps) > 0 {
+	if m.searchMode && len(m.filteredApps) > 0 && m.focusArea == AppTabsFocus {
 		displayList = m.filteredApps
 	}
 
@@ -142,7 +264,11 @@ func (m *Model) renderAppColumn() string {
 	}
 
 	columnContent := strings.Join(content, "\n")
-	return columnStyle.
+	style := columnStyle
+	if m.focusArea == AppTabsFocus {
+		style = focusedColumnStyle
+	}
+	return style.
 		Width(m.tabWidth).
 		Height(m.windowHeight - 8).
 		Render(columnContent)
@@ -164,8 +290,14 @@ func (m *Model) renderFileColumn() string {
 	content = append(content, header)
 	content = append(content, strings.Repeat("─", m.trayWidth-2))
 
+	if m.searchMode && m.focusArea == FileTrayFocus {
+		searchBar := fmt.Sprintf("🔍 %s█", m.searchQuery)
+		content = append(content, searchBar)
+		content = append(content, "")
+	}
+
 	displayList := m.fileList
-	if m.searchMode && len(m.filteredFiles) > 0 {
+	if m.searchMode && len(m.filteredFiles) > 0 && m.focusArea == FileTrayFocus {
 		displayList = m.filteredFiles
 	}
 
@@ -208,73 +340,49 @@ func (m *Model) renderFileColumn() string {
 	}
 
 	columnContent := strings.Join(content, "\n")
-	return columnStyle.
+	style := columnStyle
+	if m.focusArea == FileTrayFocus {
+		style = focusedColumnStyle
+	}
+	return style.
 		Width(m.trayWidth).
 		Height(m.windowHeight - 8).
 		Render(columnContent)
-}
-
-func (m *Model) renderPreviewColumn() string {
-	var content string
-
-	if m.expandedAppTab != -1 && len(m.fileList) > 0 && m.activeFileTab < len(m.fileList) {
-
-		fileName := m.fileList[m.activeFileTab]
-		m.updatePreview(fileName)
-		content = m.previewViewport.View()
-	} else {
-
-		welcomeLines := []string{
-			"",
-			"Welcome to HyDE Config Manager",
-			"",
-			"← Select an app from the left panel",
-			"Press Enter or Space to expand",
-			"",
-			"Navigation:",
-			"↑/↓ or k/j - Move up/down",
-			"←/→ or h/l - Move between panels",
-			"Tab/Shift+Tab - Cycle focus",
-			"Space/Enter - Expand/select",
-			"/ - Search",
-			"q - Quit",
-		}
-		content = strings.Join(welcomeLines, "\n")
-	}
-
-	return columnStyle.
-		Width(m.previewWidth).
-		Height(m.windowHeight - 8).
-		Render(content)
 }
 
 func (m *Model) renderFooter() string {
 	var statusItems []string
 
 	if m.searchMode {
-		statusItems = append(statusItems, fmt.Sprintf("Search: %s█", m.searchQuery))
-		statusItems = append(statusItems, "Enter: confirm")
-		statusItems = append(statusItems, "Esc: cancel")
+		if m.focusArea == AppTabsFocus {
+			statusItems = append(statusItems, fmt.Sprintf("Search apps: %s█", m.searchQuery))
+		} else if m.focusArea == FileTrayFocus {
+			statusItems = append(statusItems, fmt.Sprintf("Search files: %s█", m.searchQuery))
+		} else {
+			statusItems = append(statusItems, fmt.Sprintf("Search: %s█", m.searchQuery))
+		}
+		statusItems = append(statusItems, " Enter: confirm")
+		statusItems = append(statusItems, " Esc: cancel")
 	} else {
 
 		switch m.focusArea {
 		case AppTabsFocus:
 			statusItems = append(statusItems, "↑/↓: navigate")
-			statusItems = append(statusItems, "Enter/Space: expand")
+			statusItems = append(statusItems, " Enter/Space: expand")
 		case FileTrayFocus:
 			statusItems = append(statusItems, "↑/↓: navigate")
-			statusItems = append(statusItems, "Enter: select")
-			statusItems = append(statusItems, "←: back to apps")
+			statusItems = append(statusItems, " Enter: select")
+			statusItems = append(statusItems, " ←: back to apps")
 		case PreviewFocus:
 			statusItems = append(statusItems, "PgUp/PgDn: scroll")
-			statusItems = append(statusItems, "←: back to files")
+			statusItems = append(statusItems, " ←: back to files")
 		}
 
-		statusItems = append(statusItems, "Tab: cycle focus")
-		statusItems = append(statusItems, "/: search")
-		statusItems = append(statusItems, "q: quit")
+		statusItems = append(statusItems, " Tab: cycle focus")
+		statusItems = append(statusItems, " /: search")
+		statusItems = append(statusItems, " q: quit")
 	}
 
-	statusText := strings.Join(statusItems, "")
+	statusText := strings.Join(statusItems, " ")
 	return footerStyle.Width(m.windowWidth).Render(statusText)
 }
