@@ -107,7 +107,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateDimensions()
 
 	case tea.MouseMsg:
-
 		if msg.Type == tea.MouseWheelUp || msg.Type == tea.MouseWheelDown {
 			now := time.Now()
 			if now.Sub(m.lastScrollTime) < 50*time.Millisecond {
@@ -139,9 +138,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			} else if m.focusArea == PreviewFocus {
-				m.previewViewport.LineUp(1)
+				m.previewViewport.ScrollUp(1)
 			}
-
 		case tea.MouseWheelDown:
 			if m.focusArea == AppTabsFocus {
 				if m.activeAppTab < len(m.appList)-1 {
@@ -156,7 +154,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			} else if m.focusArea == PreviewFocus {
-				m.previewViewport.LineDown(1)
+				m.previewViewport.ScrollDown(1)
+			}
+		case tea.MouseLeft:
+			if msg.X < m.tabWidth {
+				m.focusArea = AppTabsFocus
+			} else if m.expandedAppTab != -1 && msg.X < m.tabWidth+m.trayWidth {
+				m.focusArea = FileTrayFocus
+			} else {
+				m.focusArea = PreviewFocus
 			}
 		}
 		return m, nil
@@ -215,7 +221,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			} else if m.focusArea == PreviewFocus {
-				m.previewViewport.LineUp(1)
+				m.previewViewport.ScrollUp(1)
 			}
 
 		case "down", "j":
@@ -232,7 +238,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			} else if m.focusArea == PreviewFocus {
-				m.previewViewport.LineDown(1)
+				m.previewViewport.ScrollDown(1)
 			}
 		}
 	}
@@ -289,36 +295,6 @@ func (m *Model) cycleFocus(direction int) {
 	}
 
 	m.focusArea = areas[currentIndex]
-}
-
-func (m *Model) navigateUp() {
-	switch m.focusArea {
-	case AppTabsFocus:
-		if m.activeAppTab > 0 {
-			m.activeAppTab--
-		}
-	case FileTrayFocus:
-		if m.activeFileTab > 0 {
-			m.activeFileTab--
-		}
-	case PreviewFocus:
-		m.previewViewport.LineUp(1)
-	}
-}
-
-func (m *Model) navigateDown() {
-	switch m.focusArea {
-	case AppTabsFocus:
-		if m.activeAppTab < len(m.appList)-1 {
-			m.activeAppTab++
-		}
-	case FileTrayFocus:
-		if m.activeFileTab < len(m.fileList)-1 {
-			m.activeFileTab++
-		}
-	case PreviewFocus:
-		m.previewViewport.LineDown(1)
-	}
 }
 
 func (m *Model) expandAppTab(appIndex int) {
@@ -530,13 +506,10 @@ func (m *Model) readFilePreviewWithScroll(filePath string) ([]string, int) {
 func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	switch m.focusArea {
 	case AppTabsFocus:
-		if m.expandedAppTab == m.activeAppTab {
-
-			m.expandedAppTab = -1
-		} else {
-
+		if m.expandedAppTab != m.activeAppTab {
 			m.expandAppTab(m.activeAppTab)
 		}
+		m.focusArea = FileTrayFocus
 	case FileTrayFocus:
 		if len(m.fileList) > 0 && m.activeFileTab < len(m.fileList) {
 			fileName := m.fileList[m.activeFileTab]
@@ -546,7 +519,6 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 			}
 		}
 	}
-
 	return m, nil
 }
 
@@ -561,11 +533,11 @@ func (m *Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchMode = false
 
 		if m.focusArea == AppTabsFocus && len(m.filteredApps) > 0 {
-
 			for i, app := range m.appList {
 				if app == m.filteredApps[0] {
 					m.activeAppTab = i
 					m.expandAppTab(i)
+					m.focusArea = FileTrayFocus // Move focus to files panel after app search
 					break
 				}
 			}
@@ -628,37 +600,6 @@ func (m *Model) updateFilteredLists() {
 			}
 		}
 	}
-}
-
-func (m *Model) handleMouseEvent(msg tea.MouseMsg) (*Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.MouseWheelUp:
-		if m.focusArea == PreviewFocus {
-			m.previewViewport.LineUp(1)
-		}
-
-	case tea.MouseWheelDown:
-		if m.focusArea == PreviewFocus {
-			m.previewViewport.LineDown(1)
-		}
-
-	case tea.MouseLeft:
-
-		if msg.X < m.tabWidth {
-
-			m.focusArea = AppTabsFocus
-
-		} else if m.expandedAppTab != -1 && msg.X < m.tabWidth+m.trayWidth {
-
-			m.focusArea = FileTrayFocus
-
-		} else {
-
-			m.focusArea = PreviewFocus
-		}
-	}
-
-	return m, nil
 }
 
 func (m *Model) GetSelectedApp() string {
