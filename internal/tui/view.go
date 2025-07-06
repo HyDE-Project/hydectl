@@ -195,6 +195,12 @@ func (m *Model) renderPreviewColumnWithWidth(width int) string {
 	content = append(content, headerStyle.Render(header))
 	content = append(content, strings.Repeat("─", width-2))
 
+	if m.searchMode && m.focusArea == PreviewFocus {
+		searchBar := fmt.Sprintf("🔍 %s█", m.searchQuery)
+		content = append(content, searchBar)
+		content = append(content, "")
+	}
+
 	var contentBlock string
 	if m.expandedAppTab != -1 && len(m.fileList) > 0 && m.activeFileTab < len(m.fileList) {
 		fileName := m.fileList[m.activeFileTab]
@@ -394,35 +400,22 @@ func (m *Model) renderFooter() string {
 	var statusItems []string
 
 	if m.searchMode {
-		if m.focusArea == AppTabsFocus {
-			statusItems = append(statusItems, fmt.Sprintf("Search apps: %s█", m.searchQuery))
-		} else if m.focusArea == FileTrayFocus {
-			statusItems = append(statusItems, fmt.Sprintf("Search files: %s█", m.searchQuery))
-		} else {
-			statusItems = append(statusItems, fmt.Sprintf("Search: %s█", m.searchQuery))
+		if m.focusArea == PreviewFocus {
+			statusItems = append(statusItems, "n: next  N: prev")
 		}
-		statusItems = append(statusItems, " Enter: confirm")
-		statusItems = append(statusItems, " Esc: cancel")
+		statusItems = append(statusItems, "Enter: confirm")
+		statusItems = append(statusItems, "Esc: cancel")
 	} else {
-
 		switch m.focusArea {
 		case AppTabsFocus:
-			statusItems = append(statusItems, "↑/↓: navigate")
-			statusItems = append(statusItems, " Enter/Space: expand")
+			statusItems = append(statusItems, "↑/↓: move  Enter/→: expand  Tab: next panel  q: quit")
 		case FileTrayFocus:
-			statusItems = append(statusItems, "↑/↓: navigate")
-			statusItems = append(statusItems, " Enter: select")
-			statusItems = append(statusItems, " ←: back to apps")
+			statusItems = append(statusItems, "↑/↓: move  Enter: select  ←: back  Tab: next panel  q: quit")
 		case PreviewFocus:
-			statusItems = append(statusItems, "PgUp/PgDn: scroll")
-			statusItems = append(statusItems, " ←: back to files")
+			statusItems = append(statusItems, "PgUp/PgDn: scroll  ←: back  Tab: next panel  q: quit")
 		}
-
-		statusItems = append(statusItems, " Tab: cycle focus")
-		statusItems = append(statusItems, " /: search")
-		statusItems = append(statusItems, " q: quit")
 	}
 
-	statusText := strings.Join(statusItems, " ")
+	statusText := strings.Join(statusItems, "  ")
 	return footerStyle.Width(m.windowWidth).Render(statusText)
 }

@@ -395,7 +395,7 @@ func highlightFileContent(displayName, realPath, content, styleName string) stri
 		return content
 	}
 
-	tryStyles := []string{styleName, "native", "github", "monokai", "dracula"}
+	tryStyles := []string{styleName, "monokai", "github", "native", "dracula"}
 	var style *chroma.Style
 	var styleUsed string
 	for _, s := range tryStyles {
