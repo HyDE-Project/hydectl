@@ -18,13 +18,13 @@ icon = "🐚"
 
 [zsh.files.zshrc]
 description = "Main Zsh Configuration"
-path = "$HOME/.zshrc"
+path = "$ZDOTDIR/.zshrc"
 pre_hook = ["bash", "-c", "echo 'Editing .zshrc...'"]
 post_hook = ["bash", "-c", "echo 'Zsh config updated. Restart shell to apply changes.'"]
 
 [zsh.files.user]
 description = "Zsh Aliases"
-path = "$HOME/.user.zsh"
+path = "$ZDOTDIR/user.zsh"
 
 
 [dunst]
