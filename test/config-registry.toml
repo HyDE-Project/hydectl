@@ -81,11 +81,17 @@ path = "${XDG_CONFIG_HOME:-$HOME/.config}/waybar/config.jsonc"
 pre_hook = ["bash", "-c", "echo 'Editing Waybar config...'"]
 post_hook = ["bash", "-c", "killall waybar && waybar & disown"]
 
-[waybar.files.style]
-description = "Waybar Styling"
-path = "${XDG_CONFIG_HOME:-$HOME/.config}/waybar/style.css"
+[waybar.files.user-style]
+description = "Waybar User style overrides"
+path = "${XDG_CONFIG_HOME:-$HOME/.config}/waybar/user-style.css"
 pre_hook = ["bash", "-c", "echo 'Editing Waybar styles...'"]
 post_hook = ["bash", "-c", "killall waybar && waybar & disown"]
+
+
+[waybar.files.theme-colors]
+description = "Waybar theme colors"
+path = "${XDG_CONFIG_HOME:-$HOME/.config}/waybar/theme.css"
+
 
 [rofi]
 description = "Rofi Application Launcher"

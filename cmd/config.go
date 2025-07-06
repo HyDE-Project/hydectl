@@ -10,6 +10,8 @@ import (
 	"hydectl/internal/tui"
 )
 
+var previewHighlightStyle string
+
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Interactive configuration file editor",
@@ -18,6 +20,7 @@ var configCmd = &cobra.Command{
 }
 
 func init() {
+	configCmd.Flags().StringVar(&previewHighlightStyle, "preview-highlight", "monokai", "Syntax highlight style for preview (e.g. monokai, dracula, solarized-dark, etc)")
 	rootCmd.AddCommand(configCmd)
 }
 
@@ -34,7 +37,7 @@ func runConfigCommand(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	model := tui.NewModel(registry)
+	model := tui.NewModel(registry, previewHighlightStyle)
 
 	p := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	finalModel, err := p.Run()

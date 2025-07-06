@@ -2,11 +2,18 @@ package tui
 
 import (
 	"bufio"
+	"bytes"
 	"os"
 	"sort"
 	"strings"
 	"time"
 
+	"fmt"
+
+	chroma "github.com/alecthomas/chroma/v2"
+	"github.com/alecthomas/chroma/v2/lexers"
+	"github.com/alecthomas/chroma/v2/quick"
+	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -52,9 +59,11 @@ type Model struct {
 	fileTrayViewport viewport.Model
 
 	lastScrollTime time.Time
+
+	highlightStyle string
 }
 
-func NewModel(registry *config.ConfigRegistry) *Model {
+func NewModel(registry *config.ConfigRegistry, highlightStyle string) *Model {
 	var apps []string
 	for appName := range registry.Apps {
 		apps = append(apps, appName)
@@ -82,6 +91,7 @@ func NewModel(registry *config.ConfigRegistry) *Model {
 		previewWidth:     60,
 		previewViewport:  previewVp,
 		fileTrayViewport: trayVp,
+		highlightStyle:   highlightStyle,
 	}
 }
 
@@ -356,6 +366,82 @@ func (m *Model) checkFileExists() {
 	}
 }
 
+func highlightFileContent(displayName, realPath, content, styleName string) string {
+
+	lexer := lexers.Match(realPath)
+
+	if lexer == nil {
+		name := strings.ToLower(realPath)
+		if strings.Contains(name, "css") {
+			lexer = lexers.Get("css")
+		} else if strings.Contains(name, "toml") {
+			lexer = lexers.Get("toml")
+		} else if strings.Contains(name, "conf") || strings.Contains(name, "rc") {
+			lexer = lexers.Get("ini")
+		} else if strings.Contains(name, "json") {
+			lexer = lexers.Get("json")
+		} else if strings.Contains(name, "sh") || strings.Contains(name, "bash") || strings.Contains(name, "zsh") {
+			lexer = lexers.Get("bash")
+		} else if strings.Contains(name, "yaml") || strings.Contains(name, "yml") {
+			lexer = lexers.Get("yaml")
+		} else if strings.Contains(name, "lua") {
+			lexer = lexers.Get("lua")
+		} else if strings.Contains(name, "py") {
+			lexer = lexers.Get("python")
+		} else if strings.Contains(name, "js") {
+			lexer = lexers.Get("javascript")
+		} else if strings.Contains(name, "hypr") {
+			lexer = lexers.Get("ini")
+		}
+	}
+
+	if lexer == nil {
+		lexer = lexers.Analyse(content)
+	}
+	if lexer == nil {
+		logTuiDebug(fmt.Sprintf("[highlightFileContent] No lexer found for %s (realPath: %s)", displayName, realPath))
+		return content
+	}
+
+	tryStyles := []string{styleName, "native", "github", "monokai", "dracula"}
+	var style *chroma.Style
+	var styleUsed string
+	for _, s := range tryStyles {
+		if s == "" {
+			continue
+		}
+		style = styles.Get(s)
+		if style != nil {
+			styleUsed = s
+			break
+		}
+	}
+	if style == nil {
+		style = styles.Fallback
+		styleUsed = "fallback"
+	}
+
+	logTuiDebug(fmt.Sprintf("[highlightFileContent] File: %s | RealPath: %s | Lexer: %s | Style: %s", displayName, realPath, lexer.Config().Name, styleUsed))
+
+	var buf bytes.Buffer
+	err := quick.Highlight(&buf, content, lexer.Config().Name, "terminal256", style.Name)
+	if err != nil {
+		logTuiDebug(fmt.Sprintf("[highlightFileContent] Chroma error: %v", err))
+		return content
+	}
+	return buf.String()
+}
+
+func logTuiDebug(msg string) {
+	f, err := os.OpenFile("/tmp/hydectl-tui-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	f.WriteString("[" + timestamp + "] " + msg + "\n")
+}
+
 func (m *Model) updatePreview(fileName string) {
 	if m.currentApp == "" || fileName == "" {
 		return
@@ -371,7 +457,9 @@ func (m *Model) updatePreview(fileName string) {
 	if fileConfig.FileExists() {
 		expandedPath := config.ExpandPath(fileConfig.Path)
 		content, _ := m.readFileContent(expandedPath)
-		contentLines = content
+		joined := strings.Join(content, "\n")
+		highlighted := highlightFileContent(fileName, expandedPath, joined, m.highlightStyle)
+		contentLines = strings.Split(highlighted, "\n")
 	} else {
 		contentLines = []string{}
 	}
