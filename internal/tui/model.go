@@ -49,6 +49,7 @@ type Model struct {
 
 	searchQuery   string
 	searchMode    bool
+	searchActive  bool
 	filteredApps  []string
 	filteredFiles []string
 
@@ -64,6 +65,11 @@ type Model struct {
 	highlightStyle      string
 	previewMatchIndices []int // byte offsets of regex matches in preview
 	previewMatchIndex   int   // current match index
+
+	jumpToLineMode  bool
+	jumpToLineInput string
+
+	previewSearchBuffer string // stores last confirmed search for preview n/N
 }
 
 func NewModel(registry *config.ConfigRegistry, highlightStyle string) *Model {
@@ -171,21 +177,115 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.searchMode {
-			if m.focusArea == PreviewFocus && (msg.String() == "n" || msg.String() == "N") {
-				if len(m.previewMatchIndices) == 0 {
-					return m, nil
+		if m.jumpToLineMode {
+			// Handle jump-to-line input
+			switch msg.String() {
+			case "enter":
+				if m.jumpToLineInput != "" {
+					lineNum := 0
+					fmt.Sscanf(m.jumpToLineInput, "%d", &lineNum)
+					if lineNum > 0 {
+						m.previewViewport.GotoTop()
+						m.previewViewport.ScrollDown(lineNum - 1)
+					}
 				}
-				if msg.String() == "n" {
-					m.previewMatchIndex = (m.previewMatchIndex + 1) % len(m.previewMatchIndices)
-				} else {
-					m.previewMatchIndex = (m.previewMatchIndex - 1 + len(m.previewMatchIndices)) % len(m.previewMatchIndices)
+				m.jumpToLineMode = false
+				m.jumpToLineInput = ""
+				return m, nil
+			case "esc", "ctrl+c":
+				m.jumpToLineMode = false
+				m.jumpToLineInput = ""
+				return m, nil
+			case "backspace":
+				if len(m.jumpToLineInput) > 0 {
+					m.jumpToLineInput = m.jumpToLineInput[:len(m.jumpToLineInput)-1]
 				}
-				// Scroll preview to match
-				m.scrollPreviewToMatch()
+				return m, nil
+			default:
+				if len(msg.String()) == 1 && msg.String()[0] >= '0' && msg.String()[0] <= '9' {
+					m.jumpToLineInput += msg.String()
+				}
 				return m, nil
 			}
+		}
+
+		if m.searchActive && m.focusArea == PreviewFocus && (msg.String() == "n" || msg.String() == "N") {
+			if len(m.previewMatchIndices) == 0 {
+				return m, nil
+			}
+			if msg.String() == "n" {
+				m.previewMatchIndex = (m.previewMatchIndex + 1) % len(m.previewMatchIndices)
+			} else {
+				m.previewMatchIndex = (m.previewMatchIndex - 1 + len(m.previewMatchIndices)) % len(m.previewMatchIndices)
+			}
+			// Scroll preview to match
+			m.scrollPreviewToMatch()
+			return m, nil
+		}
+		if m.searchMode {
 			return m.handleSearchMode(msg)
+		}
+
+		// --- Goto line and navigation keys in PreviewFocus ---
+		if m.focusArea == PreviewFocus && !m.jumpToLineMode {
+			// Vim-like: 'gg' for top, 'g' + number for goto line
+			if msg.String() == "g" {
+				if m.lastScrollTime.IsZero() {
+					m.lastScrollTime = time.Now()
+					return m, nil // first 'g', wait for next key
+				} else {
+					// second 'g' immediately after first
+					m.previewViewport.GotoTop()
+					m.lastScrollTime = time.Time{}
+					return m, nil
+				}
+			}
+			if !m.lastScrollTime.IsZero() {
+				// After 'g', if next key is a digit, start jump-to-line mode with that digit
+				if len(msg.String()) == 1 && msg.String()[0] >= '0' && msg.String()[0] <= '9' {
+					m.jumpToLineMode = true
+					m.jumpToLineInput = msg.String()
+					m.lastScrollTime = time.Time{}
+					return m, nil
+				} else {
+					// Any other key, reset
+					m.lastScrollTime = time.Time{}
+				}
+			}
+			switch msg.String() {
+			case "G":
+				m.previewViewport.GotoBottom()
+				return m, nil
+			case "home":
+				m.previewViewport.GotoTop()
+				return m, nil
+			case "end":
+				m.previewViewport.GotoBottom()
+				return m, nil
+			case "pgup":
+				m.previewViewport.ScrollUp(m.previewViewport.Height)
+				return m, nil
+			case "pgdown":
+				m.previewViewport.ScrollDown(m.previewViewport.Height)
+				return m, nil
+			}
+		}
+
+		if m.searchMode && m.focusArea == PreviewFocus {
+			switch msg.String() {
+			case "up", "k":
+				if len(m.previewMatchIndices) > 0 {
+					m.previewMatchIndex = (m.previewMatchIndex - 1 + len(m.previewMatchIndices)) % len(m.previewMatchIndices)
+					m.scrollPreviewToMatch()
+					return m, nil
+				}
+			case "down", "j":
+				if len(m.previewMatchIndices) > 0 {
+					m.previewMatchIndex = (m.previewMatchIndex + 1) % len(m.previewMatchIndices)
+					m.scrollPreviewToMatch()
+					return m, nil
+				}
+			}
 		}
 
 		switch msg.String() {
@@ -461,6 +561,8 @@ func (m *Model) updatePreview(fileName string) {
 	m.previewMatchIndex = 0
 	if m.searchMode && m.focusArea == PreviewFocus && m.searchQuery != "" {
 		m.updatePreviewMatches()
+	} else if m.searchActive && m.focusArea == PreviewFocus && m.previewSearchBuffer != "" {
+		m.previewMatchIndices = regexAllIndices(m.previewViewport.View(), m.previewSearchBuffer)
 	}
 }
 
@@ -565,6 +667,7 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 				m.selectedFile = fileName
 				return m, tea.Quit
 			}
+			m.searchActive = true
 		}
 	}
 	return m, nil
@@ -579,7 +682,10 @@ func (m *Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		m.searchMode = false
-
+		m.searchActive = true // Activate search navigation
+		if m.focusArea == PreviewFocus && m.searchQuery != "" {
+			m.previewSearchBuffer = m.searchQuery // buffer the search word
+		}
 		if m.focusArea == AppTabsFocus && len(m.filteredApps) > 0 {
 			for i, app := range m.appList {
 				if app == m.filteredApps[0] {
@@ -602,12 +708,26 @@ func (m *Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.updateFilteredLists()
 	case "esc", "ctrl+c":
 		m.searchMode = false
+		m.searchActive = false // Deactivate search navigation
 		m.searchQuery = ""
 		m.updateFilteredLists()
 	case "backspace":
 		if len(m.searchQuery) > 0 {
 			m.searchQuery = m.searchQuery[:len(m.searchQuery)-1]
 			m.updateFilteredLists()
+			return m, nil
+		}
+	case "up", "k":
+		if m.focusArea == PreviewFocus && len(m.previewMatchIndices) > 0 {
+			m.previewMatchIndex = (m.previewMatchIndex - 1 + len(m.previewMatchIndices)) % len(m.previewMatchIndices)
+			m.scrollPreviewToMatch()
+			return m, nil
+		}
+	case "down", "j":
+		if m.focusArea == PreviewFocus && len(m.previewMatchIndices) > 0 {
+			m.previewMatchIndex = (m.previewMatchIndex + 1) % len(m.previewMatchIndices)
+			m.scrollPreviewToMatch()
+			return m, nil
 		}
 	default:
 		if len(msg.String()) == 1 {

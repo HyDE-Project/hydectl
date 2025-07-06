@@ -72,6 +72,18 @@ func (m *Model) View() string {
 		m.loadFileList()
 	}
 
+	// Show jump-to-line prompt if active (render like search bar at top, not footer)
+	if m.jumpToLineMode {
+		sections := []string{
+			headerStyle.Render("🏗️HyDE User Config Manager"),
+			"Goto line: " + m.jumpToLineInput + "█",
+			m.renderMainContent(),
+			m.renderDetailsBar(),
+			m.renderFooter(),
+		}
+		return lipgloss.JoinVertical(lipgloss.Left, sections...)
+	}
+
 	var sections []string
 
 	header := headerStyle.Render("🏗️HyDE User Config Manager")
@@ -195,8 +207,16 @@ func (m *Model) renderPreviewColumnWithWidth(width int) string {
 	content = append(content, headerStyle.Render(header))
 	content = append(content, strings.Repeat("─", width-2))
 
+	// Show search bar at the top of the preview column if searching in preview
 	if m.searchMode && m.focusArea == PreviewFocus {
 		searchBar := fmt.Sprintf("🔍 %s█", m.searchQuery)
+		content = append(content, searchBar)
+		content = append(content, "")
+	}
+
+	// Show jump-to-line prompt at the top of the preview column
+	if m.jumpToLineMode {
+		searchBar := fmt.Sprintf("Goto line: %s█", m.jumpToLineInput)
 		content = append(content, searchBar)
 		content = append(content, "")
 	}
@@ -210,9 +230,15 @@ func (m *Model) renderPreviewColumnWithWidth(width int) string {
 		contentBlock = ""
 	}
 
-	// --- Highlight regex matches in preview only if searchMode and PreviewFocus ---
-	if m.searchMode && m.focusArea == PreviewFocus && m.searchQuery != "" && contentBlock != "" {
-		query := m.searchQuery
+	// --- Highlight regex matches in preview for both searchMode and n/N navigation ---
+	var highlightQuery string
+	if m.searchMode && m.focusArea == PreviewFocus && m.searchQuery != "" {
+		highlightQuery = m.searchQuery
+	} else if m.searchActive && m.focusArea == PreviewFocus && m.previewSearchBuffer != "" {
+		highlightQuery = m.previewSearchBuffer
+	}
+	if highlightQuery != "" && contentBlock != "" {
+		query := highlightQuery
 		// Use regex, fallback to literal if invalid
 		var re *regexp.Regexp
 		var err error
@@ -400,22 +426,34 @@ func (m *Model) renderFooter() string {
 	var statusItems []string
 
 	if m.searchMode {
-		if m.focusArea == PreviewFocus {
-			statusItems = append(statusItems, "n: next  N: prev")
+		// Only show search status in footer for AppTabsFocus and FileTrayFocus
+		if m.focusArea == AppTabsFocus {
+			statusItems = append(statusItems, fmt.Sprintf("Search apps: %s█", m.searchQuery))
+			statusItems = append(statusItems, " Enter: confirm")
+			statusItems = append(statusItems, " Esc: cancel")
+		} else if m.focusArea == FileTrayFocus {
+			statusItems = append(statusItems, fmt.Sprintf("Search files: %s█", m.searchQuery))
+			statusItems = append(statusItems, " Enter: confirm")
+			statusItems = append(statusItems, " Esc: cancel")
 		}
-		statusItems = append(statusItems, "Enter: confirm")
-		statusItems = append(statusItems, "Esc: cancel")
 	} else {
 		switch m.focusArea {
 		case AppTabsFocus:
-			statusItems = append(statusItems, "↑/↓: move  Enter/→: expand  Tab: next panel  q: quit")
+			statusItems = append(statusItems, "↑/↓: navigate")
+			statusItems = append(statusItems, " Enter/Space: expand")
 		case FileTrayFocus:
-			statusItems = append(statusItems, "↑/↓: move  Enter: select  ←: back  Tab: next panel  q: quit")
+			statusItems = append(statusItems, "↑/↓: navigate")
+			statusItems = append(statusItems, " Enter: select")
+			statusItems = append(statusItems, " ←: back to apps")
 		case PreviewFocus:
-			statusItems = append(statusItems, "PgUp/PgDn: scroll  ←: back  Tab: next panel  q: quit")
+			statusItems = append(statusItems, "PgUp/PgDn: scroll")
+			statusItems = append(statusItems, " ←: back to files")
 		}
+		statusItems = append(statusItems, " Tab: cycle focus")
+		statusItems = append(statusItems, " /: search")
+		statusItems = append(statusItems, " q: quit")
 	}
 
-	statusText := strings.Join(statusItems, "  ")
+	statusText := strings.Join(statusItems, " ")
 	return footerStyle.Width(m.windowWidth).Render(statusText)
 }
