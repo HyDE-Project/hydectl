@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -60,7 +61,9 @@ type Model struct {
 
 	lastScrollTime time.Time
 
-	highlightStyle string
+	highlightStyle      string
+	previewMatchIndices []int // byte offsets of regex matches in preview
+	previewMatchIndex   int   // current match index
 }
 
 func NewModel(registry *config.ConfigRegistry, highlightStyle string) *Model {
@@ -169,6 +172,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if m.searchMode {
+			if m.focusArea == PreviewFocus && (msg.String() == "n" || msg.String() == "N") {
+				if len(m.previewMatchIndices) == 0 {
+					return m, nil
+				}
+				if msg.String() == "n" {
+					m.previewMatchIndex = (m.previewMatchIndex + 1) % len(m.previewMatchIndices)
+				} else {
+					m.previewMatchIndex = (m.previewMatchIndex - 1 + len(m.previewMatchIndices)) % len(m.previewMatchIndices)
+				}
+				// Scroll preview to match
+				m.scrollPreviewToMatch()
+				return m, nil
+			}
 			return m.handleSearchMode(msg)
 		}
 
@@ -441,6 +457,38 @@ func (m *Model) updatePreview(fileName string) {
 	}
 
 	m.previewViewport.SetContent(strings.Join(contentLines, "\n"))
+	m.previewMatchIndices = nil
+	m.previewMatchIndex = 0
+	if m.searchMode && m.focusArea == PreviewFocus && m.searchQuery != "" {
+		m.updatePreviewMatches()
+	}
+}
+
+func (m *Model) updatePreviewMatches() {
+	content := m.previewViewport.View()
+	m.previewMatchIndices = nil
+	m.previewMatchIndex = 0
+	if m.searchQuery == "" {
+		return
+	}
+	indices := regexAllIndices(content, m.searchQuery)
+	m.previewMatchIndices = indices
+}
+
+// regexAllIndices returns the start indices of all regex matches (case-insensitive, fallback to literal if invalid)
+func regexAllIndices(text, pattern string) []int {
+	var indices []int
+	re, err := regexp.Compile("(?i)" + pattern)
+	if err != nil {
+		// fallback to literal
+		pattern = regexp.QuoteMeta(pattern)
+		re = regexp.MustCompile("(?i)" + pattern)
+	}
+	matches := re.FindAllStringIndex(text, -1)
+	for _, m := range matches {
+		indices = append(indices, m[0])
+	}
+	return indices
 }
 
 func (m *Model) readFileContent(filePath string) ([]string, error) {
@@ -612,4 +660,21 @@ func (m *Model) GetSelectedFile() string {
 
 func (m *Model) IsQuitting() bool {
 	return m.quitting
+}
+
+func (m *Model) scrollPreviewToMatch() {
+	if len(m.previewMatchIndices) == 0 {
+		return
+	}
+	pos := m.previewMatchIndices[m.previewMatchIndex]
+	content := m.previewViewport.View()
+	// Count newlines before pos to get line number
+	line := 0
+	for i := 0; i < pos && i < len(content); i++ {
+		if content[i] == '\n' {
+			line++
+		}
+	}
+	m.previewViewport.GotoTop()
+	m.previewViewport.ScrollDown(line)
 }

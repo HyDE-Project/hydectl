@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -202,6 +203,37 @@ func (m *Model) renderPreviewColumnWithWidth(width int) string {
 	} else {
 		contentBlock = ""
 	}
+
+	// --- Highlight regex matches in preview only if searchMode and PreviewFocus ---
+	if m.searchMode && m.focusArea == PreviewFocus && m.searchQuery != "" && contentBlock != "" {
+		query := m.searchQuery
+		// Use regex, fallback to literal if invalid
+		var re *regexp.Regexp
+		var err error
+		re, err = regexp.Compile("(?i)" + query)
+		if err != nil {
+			query = regexp.QuoteMeta(query)
+			re = regexp.MustCompile("(?i)" + query)
+		}
+		indices := re.FindAllStringIndex(contentBlock, -1)
+		current := m.previewMatchIndex
+		// Highlight all matches, current one gets special style
+		var b strings.Builder
+		last := 0
+		for i, idx := range indices {
+			b.WriteString(contentBlock[last:idx[0]])
+			match := contentBlock[idx[0]:idx[1]]
+			if i == current {
+				b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(lipgloss.Color("226")).Bold(true).Render(match))
+			} else {
+				b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("226")).Bold(true).Underline(true).Render(match))
+			}
+			last = idx[1]
+		}
+		b.WriteString(contentBlock[last:])
+		contentBlock = b.String()
+	}
+	// --- End highlight ---
 
 	if contentBlock != "" {
 		content = append(content, contentBlock)
