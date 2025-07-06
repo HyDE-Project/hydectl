@@ -559,20 +559,36 @@ func (m *Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		m.searchMode = false
+
+		if m.focusArea == AppTabsFocus && len(m.filteredApps) > 0 {
+
+			for i, app := range m.appList {
+				if app == m.filteredApps[0] {
+					m.activeAppTab = i
+					m.expandAppTab(i)
+					break
+				}
+			}
+		} else if m.focusArea == FileTrayFocus && len(m.filteredFiles) > 0 {
+			for i, file := range m.fileList {
+				if file == m.filteredFiles[0] {
+					m.activeFileTab = i
+					m.updatePreview(file)
+					break
+				}
+			}
+		}
 		m.searchQuery = ""
 		m.updateFilteredLists()
-
 	case "esc", "ctrl+c":
 		m.searchMode = false
 		m.searchQuery = ""
 		m.updateFilteredLists()
-
 	case "backspace":
 		if len(m.searchQuery) > 0 {
 			m.searchQuery = m.searchQuery[:len(m.searchQuery)-1]
 			m.updateFilteredLists()
 		}
-
 	default:
 		if len(msg.String()) == 1 {
 			m.searchQuery += msg.String()

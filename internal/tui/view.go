@@ -200,7 +200,7 @@ func (m *Model) renderPreviewColumnWithWidth(width int) string {
 	var contentBlock string
 
 	if m.expandedAppTab != -1 && len(m.fileList) > 0 && m.activeFileTab < len(m.fileList) {
-		// Always update the preview to ensure formatting is applied
+
 		fileName := m.fileList[m.activeFileTab]
 		m.updatePreview(fileName)
 		contentBlock = m.previewViewport.View()
