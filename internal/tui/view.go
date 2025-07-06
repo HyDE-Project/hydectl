@@ -98,7 +98,6 @@ func (m *Model) View() string {
 func (m *Model) renderDetailsBar() string {
 	ColorBrightCyan := lipgloss.Color("51")
 	ColorBrightBlack := lipgloss.Color("240")
-	ColorBrightYellow := lipgloss.Color("226")
 	ColorBrightGreen := lipgloss.Color("82")
 	ColorBrightRed := lipgloss.Color("196")
 
@@ -109,7 +108,6 @@ func (m *Model) renderDetailsBar() string {
 		BorderForeground(ColorBrightCyan).
 		Padding(0, 1)
 	sepStyle := lipgloss.NewStyle().Foreground(ColorBrightBlack)
-	labelStyle := lipgloss.NewStyle().Foreground(ColorBrightYellow).Bold(true)
 	valueStyle := lipgloss.NewStyle().Foreground(ColorBrightBlack)
 	okStyle := lipgloss.NewStyle().Foreground(ColorBrightGreen).Bold(true)
 	errStyle := lipgloss.NewStyle().Foreground(ColorBrightRed).Bold(true)
@@ -126,36 +124,35 @@ func (m *Model) renderDetailsBar() string {
 		if activeAppTab >= 0 && activeAppTab < len(m.appList) {
 			appName := m.appList[activeAppTab]
 			appConfig := m.registry.Apps[appName]
-			icon := appConfig.Icon
-			if icon == "" {
-				icon = "⚙️"
-			}
-			info = labelStyle.Render("App:") + " " + valueStyle.Render(icon+" "+appName)
 			if appConfig.Description != "" {
-				info += "  " + labelStyle.Render("Description:") + " " + valueStyle.Render(appConfig.Description)
+				info = valueStyle.Render(appConfig.Description)
 			}
 		}
 	case FileTrayFocus:
 		if m.activeFileTab >= 0 && m.activeFileTab < len(m.fileList) {
 			fileName := m.fileList[m.activeFileTab]
 			fileConfig := m.registry.Apps[m.currentApp].Files[fileName]
-			info = labelStyle.Render("File:") + " " + valueStyle.Render(fileName)
 			if fileConfig.Description != "" {
-				info += "  " + labelStyle.Render("Description:") + " " + valueStyle.Render(fileConfig.Description)
+				info = valueStyle.Render(fileConfig.Description)
 			}
 			if fileConfig.FileExists() {
-				info += "  " + okStyle.Render("✓ Exists")
+				if info != "" {
+					info += "  "
+				}
+				info += okStyle.Render("✓ Exists")
 			} else {
-				info += "  " + errStyle.Render("❌ Missing")
+				if info != "" {
+					info += "  "
+				}
+				info += errStyle.Render("❌ Missing")
 			}
 		}
 	case PreviewFocus:
 		if m.activeFileTab >= 0 && m.activeFileTab < len(m.fileList) {
 			fileName := m.fileList[m.activeFileTab]
 			fileConfig := m.registry.Apps[m.currentApp].Files[fileName]
-			info = labelStyle.Render("Preview:") + " " + valueStyle.Render(fileName)
 			if fileConfig.Description != "" {
-				info += "  " + labelStyle.Render("Description:") + " " + valueStyle.Render(fileConfig.Description)
+				info = valueStyle.Render(fileConfig.Description)
 			}
 		}
 	}
@@ -197,15 +194,26 @@ func (m *Model) renderMainContent() string {
 }
 
 func (m *Model) renderPreviewColumnWithWidth(width int) string {
+	var content []string
+
+	// Add header for Preview column
+	icon := "🔎"
+	header := fmt.Sprintf("%s Preview", icon)
+	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("51"))
+	content = append(content, headerStyle.Render(header))
+	content = append(content, strings.Repeat("─", width-2))
+
 	var contentBlock string
-
 	if m.expandedAppTab != -1 && len(m.fileList) > 0 && m.activeFileTab < len(m.fileList) {
-
 		fileName := m.fileList[m.activeFileTab]
 		m.updatePreview(fileName)
 		contentBlock = m.previewViewport.View()
 	} else {
 		contentBlock = ""
+	}
+
+	if contentBlock != "" {
+		content = append(content, contentBlock)
 	}
 
 	style := columnStyle
@@ -215,7 +223,7 @@ func (m *Model) renderPreviewColumnWithWidth(width int) string {
 	return style.
 		Width(width).
 		Height(m.windowHeight - 8).
-		Render(contentBlock)
+		Render(strings.Join(content, "\n"))
 }
 
 func (m *Model) renderPreviewColumn() string {
@@ -224,6 +232,13 @@ func (m *Model) renderPreviewColumn() string {
 
 func (m *Model) renderAppColumn() string {
 	var content []string
+
+	// Add header with icon for Apps column
+	icon := "⚙️"
+	header := fmt.Sprintf("%s Apps", icon)
+	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("51"))
+	content = append(content, headerStyle.Render(header))
+	content = append(content, strings.Repeat("─", m.tabWidth-2))
 
 	if m.searchMode && m.focusArea == AppTabsFocus {
 		searchBar := fmt.Sprintf("🔍 %s█", m.searchQuery)
