@@ -11,42 +11,36 @@ var (
 	headerStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("86")).
-			Background(lipgloss.Color("235")).
 			Padding(0, 1).
 			Width(80).
 			Align(lipgloss.Center)
 
 	activeTabStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("0")).
-			Background(lipgloss.Color("86")).
+			Foreground(lipgloss.Color("86")).
 			Padding(0, 1)
 
 	inactiveTabStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("244")).
-				Background(lipgloss.Color("236")).
 				Padding(0, 1)
 
 	focusedTabStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("15")).
-			Background(lipgloss.Color("4")).
+			Underline(true).
+			Foreground(lipgloss.Color("51")).
 			Padding(0, 1)
 
 	activeFileStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("0")).
-			Background(lipgloss.Color("226")).
+			Foreground(lipgloss.Color("226")).
 			Padding(0, 1)
 
 	inactiveFileStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("15")).
-				Background(lipgloss.Color("236")).
 				Padding(0, 1)
 
 	missingFileStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("244")).
-				Background(lipgloss.Color("236")).
 				Padding(0, 1)
 
 	columnStyle = lipgloss.NewStyle().
@@ -55,12 +49,11 @@ var (
 
 	focusedColumnStyle = lipgloss.NewStyle().
 				Border(lipgloss.NormalBorder()).
-				BorderForeground(lipgloss.Color("1")).
+				BorderForeground(lipgloss.Color("51")).
 				Bold(true)
 
 	footerStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("244")).
-			Background(lipgloss.Color("235")).
 			Padding(0, 1)
 )
 
@@ -103,7 +96,6 @@ func (m *Model) renderDetailsBar() string {
 
 	barStyle := lipgloss.NewStyle().
 		Foreground(ColorBrightCyan).
-		Background(lipgloss.Color("235")).
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(ColorBrightCyan).
 		Padding(0, 1)
@@ -196,7 +188,6 @@ func (m *Model) renderMainContent() string {
 func (m *Model) renderPreviewColumnWithWidth(width int) string {
 	var content []string
 
-	// Add header for Preview column
 	icon := "🔎"
 	header := fmt.Sprintf("%s Preview", icon)
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("51"))
@@ -233,7 +224,6 @@ func (m *Model) renderPreviewColumn() string {
 func (m *Model) renderAppColumn() string {
 	var content []string
 
-	// Add header with icon for Apps column
 	icon := "⚙️"
 	header := fmt.Sprintf("%s Apps", icon)
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("51"))
