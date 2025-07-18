@@ -37,7 +37,8 @@ func runConfigCommand(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	model := tui.NewModel(registry, previewHighlightStyle)
+	debug, _ := cmd.Flags().GetBool("debug")
+	model := tui.NewModel(registry, previewHighlightStyle, debug)
 
 	p := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	finalModel, err := p.Run()

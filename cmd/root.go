@@ -33,12 +33,13 @@ func Execute() {
 }
 
 func init() {
-	// Add script completion
+
 	rootCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	// Set custom help template
+	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug mode")
+
 	rootCmd.SetHelpTemplate(getHelpTemplate())
 }
 

@@ -11,6 +11,8 @@ import (
 
 	"fmt"
 
+	"hydectl/internal/config"
+
 	chroma "github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/quick"
@@ -18,8 +20,6 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-
-	"hydectl/internal/config"
 )
 
 type FocusArea int
@@ -28,6 +28,7 @@ const (
 	AppTabsFocus FocusArea = iota
 	FileTrayFocus
 	PreviewFocus
+	DebugFocus
 )
 
 type Model struct {
@@ -70,9 +71,11 @@ type Model struct {
 	jumpToLineInput string
 
 	previewSearchBuffer string // stores last confirmed search for preview n/N
+	debug               bool
+	debugLog            []string
 }
 
-func NewModel(registry *config.ConfigRegistry, highlightStyle string) *Model {
+func NewModel(registry *config.ConfigRegistry, highlightStyle string, debug bool) *Model {
 	var apps []string
 	for appName := range registry.Apps {
 		apps = append(apps, appName)
@@ -101,6 +104,7 @@ func NewModel(registry *config.ConfigRegistry, highlightStyle string) *Model {
 		previewViewport:  previewVp,
 		fileTrayViewport: trayVp,
 		highlightStyle:   highlightStyle,
+		debug:            debug,
 	}
 }
 
@@ -310,6 +314,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusArea = AppTabsFocus
 			} else if m.focusArea == PreviewFocus {
 				m.focusArea = FileTrayFocus
+			} else if m.focusArea == PreviewFocus {
+				m.previewViewport.ScrollLeft(1)
+			}
+
+		case "ctrl+d":
+			if m.debug {
+				if m.focusArea == DebugFocus {
+					m.focusArea = AppTabsFocus
+				} else {
+					m.focusArea = DebugFocus
+				}
 			}
 
 		case "right", "l":
@@ -318,6 +333,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusArea = FileTrayFocus
 			} else if m.focusArea == FileTrayFocus {
 				m.focusArea = PreviewFocus
+			} else if m.focusArea == PreviewFocus {
+				m.previewViewport.ScrollRight(1)
 			}
 
 		case "enter":
@@ -458,7 +475,7 @@ func (m *Model) checkFileExists() {
 	}
 }
 
-func highlightFileContent(displayName, realPath, content, styleName string) string {
+func (m *Model) highlightFileContent(displayName, realPath, content, styleName string) string {
 
 	lexer := lexers.Match(realPath)
 
@@ -491,7 +508,7 @@ func highlightFileContent(displayName, realPath, content, styleName string) stri
 		lexer = lexers.Analyse(content)
 	}
 	if lexer == nil {
-		logTuiDebug(fmt.Sprintf("[highlightFileContent] No lexer found for %s (realPath: %s)", displayName, realPath))
+		m.logTuiDebug(fmt.Sprintf("[highlightFileContent] No lexer found for %s (realPath: %s)", displayName, realPath))
 		return content
 	}
 
@@ -513,18 +530,21 @@ func highlightFileContent(displayName, realPath, content, styleName string) stri
 		styleUsed = "fallback"
 	}
 
-	logTuiDebug(fmt.Sprintf("[highlightFileContent] File: %s | RealPath: %s | Lexer: %s | Style: %s", displayName, realPath, lexer.Config().Name, styleUsed))
+	m.logTuiDebug(fmt.Sprintf("[highlightFileContent] File: %s | RealPath: %s | Lexer: %s | Style: %s", displayName, realPath, lexer.Config().Name, styleUsed))
 
 	var buf bytes.Buffer
 	err := quick.Highlight(&buf, content, lexer.Config().Name, "terminal256", style.Name)
 	if err != nil {
-		logTuiDebug(fmt.Sprintf("[highlightFileContent] Chroma error: %v", err))
+		m.logTuiDebug(fmt.Sprintf("[highlightFileContent] Chroma error: %v", err))
 		return content
 	}
 	return buf.String()
 }
 
-func logTuiDebug(msg string) {
+func (m *Model) logTuiDebug(msg string) {
+	if m.debug {
+		m.debugLog = append(m.debugLog, msg)
+	}
 	f, err := os.OpenFile("/tmp/hydectl-tui-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return
@@ -550,7 +570,7 @@ func (m *Model) updatePreview(fileName string) {
 		expandedPath := config.ExpandPath(fileConfig.Path)
 		content, _ := m.readFileContent(expandedPath)
 		joined := strings.Join(content, "\n")
-		highlighted := highlightFileContent(fileName, expandedPath, joined, m.highlightStyle)
+		highlighted := m.highlightFileContent(fileName, expandedPath, joined, m.highlightStyle)
 		contentLines = strings.Split(highlighted, "\n")
 	} else {
 		contentLines = []string{}

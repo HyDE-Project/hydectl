@@ -72,7 +72,6 @@ func (m *Model) View() string {
 		m.loadFileList()
 	}
 
-	// Show jump-to-line prompt if active (render like search bar at top, not footer)
 	if m.jumpToLineMode {
 		sections := []string{
 			headerStyle.Render("🏗️HyDE User Config Manager"),
@@ -172,10 +171,9 @@ func (m *Model) renderDetailsBar() string {
 func (m *Model) renderMainContent() string {
 	var columns []string
 
-	// Render columns, adding a vertical border only to the active (focused) panel
 	appCol := m.renderAppColumnNoBorder()
 	if m.focusArea == AppTabsFocus {
-		appCol = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderLeft(true).BorderRight(true).BorderTop(false).BorderBottom(false).BorderForeground(lipgloss.Color("51")).Bold(true).Width(m.tabWidth).Height(m.windowHeight-8).Render(appCol)
+		appCol = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderLeft(true).BorderRight(true).BorderTop(false).BorderBottom(false).BorderForeground(lipgloss.Color("51")).Bold(true).Width(m.tabWidth).Height(m.windowHeight - 8).Render(appCol)
 	}
 	columns = append(columns, appCol)
 
@@ -183,7 +181,7 @@ func (m *Model) renderMainContent() string {
 	if m.expandedAppTab != -1 {
 		fileCol := m.renderFileColumnNoBorder()
 		if m.focusArea == FileTrayFocus {
-			fileCol = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderLeft(true).BorderRight(true).BorderTop(false).BorderBottom(false).BorderForeground(lipgloss.Color("51")).Bold(true).Width(m.trayWidth).Height(m.windowHeight-8).Render(fileCol)
+			fileCol = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderLeft(true).BorderRight(true).BorderTop(false).BorderBottom(false).BorderForeground(lipgloss.Color("51")).Bold(true).Width(m.trayWidth).Height(m.windowHeight - 8).Render(fileCol)
 		}
 		columns = append(columns, fileCol)
 		fileColumnPresent = true
@@ -216,18 +214,15 @@ func (m *Model) renderMainContent() string {
 	return mainBoxStyle.Render(row)
 }
 
-// Updated: renderPreviewColumnWithWidthAndHeight
 func (m *Model) renderPreviewColumnWithWidthAndHeight(width, height int) string {
 	icon := "🔎"
-	header := fmt.Sprintf("%s Preview", icon)
+	headerText := fmt.Sprintf("%s Preview", icon)
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("51"))
-	headerLine := headerStyle.Render(header)
+	headerLine := headerStyle.Render(headerText)
 	separatorLine := strings.Repeat("─", width-2)
 
-	// Top elements: header and separator
 	topElements := []string{headerLine, separatorLine}
 
-	// Search bar or jump-to-line prompt (at top, if active)
 	if m.searchMode && m.focusArea == PreviewFocus {
 		searchBar := fmt.Sprintf("🔍 %s█", m.searchQuery)
 		topElements = append(topElements, searchBar, "")
@@ -237,25 +232,20 @@ func (m *Model) renderPreviewColumnWithWidthAndHeight(width, height int) string 
 		topElements = append(topElements, jumpBar, "")
 	}
 
-	// Always render all top elements, never collapse them
-	topLines := len(topElements)
-	maxLines := height
-	contentLinesAvailable := maxLines - topLines
-	if contentLinesAvailable < 0 {
-		contentLinesAvailable = 0
-	}
+	topContent := strings.Join(topElements, "\n")
+	topHeight := lipgloss.Height(topContent)
 
-	// Prepare preview content block
-	var contentBlock string
+	m.previewViewport.Width = width
+	m.previewViewport.Height = height - topHeight
 	if m.expandedAppTab != -1 && len(m.fileList) > 0 && m.activeFileTab < len(m.fileList) {
 		fileName := m.fileList[m.activeFileTab]
 		m.updatePreview(fileName)
-		contentBlock = m.previewViewport.View()
 	} else {
-		contentBlock = ""
+		m.previewViewport.SetContent("")
 	}
 
-	// Highlight regex matches in preview for both searchMode and n/N navigation
+	var finalContent string
+	contentBlock := m.previewViewport.View()
 	var highlightQuery string
 	if m.searchMode && m.focusArea == PreviewFocus && m.searchQuery != "" {
 		highlightQuery = m.searchQuery
@@ -286,33 +276,16 @@ func (m *Model) renderPreviewColumnWithWidthAndHeight(width, height int) string 
 			last = idx[1]
 		}
 		b.WriteString(contentBlock[last:])
-		contentBlock = b.String()
+		finalContent = b.String()
+	} else {
+		finalContent = contentBlock
 	}
 
-	// Split content block into lines
-	contentLines := []string{}
-	if contentBlock != "" {
-		contentLines = strings.Split(contentBlock, "\n")
-	}
+	fullContent := lipgloss.JoinVertical(lipgloss.Left, topContent, finalContent)
 
-	// Only show as much content as fits below the top elements
-	if len(contentLines) > contentLinesAvailable {
-		contentLines = contentLines[:contentLinesAvailable]
-	} else if len(contentLines) < contentLinesAvailable {
-		for len(contentLines) < contentLinesAvailable {
-			contentLines = append(contentLines, "")
-		}
-	}
-
-	finalLines := append(topElements, contentLines...)
-	for len(finalLines) < maxLines {
-		finalLines = append(finalLines, "")
-	}
-
-	return lipgloss.NewStyle().Width(width).Height(maxLines).Render(strings.Join(finalLines, "\n"))
+	return lipgloss.NewStyle().Width(width).Height(height).Render(fullContent)
 }
 
-// Borderless versions of the column renderers
 func (m *Model) renderAppColumnNoBorder() string {
 	var content []string
 
@@ -359,7 +332,6 @@ func (m *Model) renderAppColumnNoBorder() string {
 		content = append(content, styled)
 	}
 
-	// Always pad to parent height so parent box does not shrink/grow with content
 	maxHeight := m.windowHeight - 8
 	for len(content) < maxHeight {
 		content = append(content, "")
@@ -426,7 +398,6 @@ func (m *Model) renderFileColumnNoBorder() string {
 		content = append(content, styled)
 	}
 
-	// Always pad to parent height so parent box does not shrink/grow with content
 	maxHeight := m.windowHeight - 8
 	for len(content) < maxHeight {
 		content = append(content, "")
@@ -436,115 +407,11 @@ func (m *Model) renderFileColumnNoBorder() string {
 	return lipgloss.NewStyle().Width(m.trayWidth).Height(maxHeight).Render(columnContent)
 }
 
-// Helper for min
 func min(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
-}
-
-func (m *Model) renderPreviewColumnWithWidthNoBorder(width int) string {
-	icon := "🔎"
-	header := fmt.Sprintf("%s Preview", icon)
-	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("51"))
-	headerLine := headerStyle.Render(header)
-	separatorLine := strings.Repeat("─", width-2)
-
-	// Top elements: header and separator
-	topElements := []string{headerLine, separatorLine}
-
-	// Search bar or jump-to-line prompt (at top, if active)
-	if m.searchMode && m.focusArea == PreviewFocus {
-		searchBar := fmt.Sprintf("🔍 %s█", m.searchQuery)
-		topElements = append(topElements, searchBar, "")
-	}
-	if m.jumpToLineMode {
-		jumpBar := fmt.Sprintf("Goto line: %s█", m.jumpToLineInput)
-		topElements = append(topElements, jumpBar, "")
-	}
-
-	// Calculate how many lines are reserved for top elements
-	topLines := len(topElements)
-
-	// Prepare preview content block
-	var contentBlock string
-	if m.expandedAppTab != -1 && len(m.fileList) > 0 && m.activeFileTab < len(m.fileList) {
-		fileName := m.fileList[m.activeFileTab]
-		m.updatePreview(fileName)
-		contentBlock = m.previewViewport.View()
-	} else {
-		contentBlock = ""
-	}
-
-	// Highlight regex matches in preview for both searchMode and n/N navigation
-	var highlightQuery string
-	if m.searchMode && m.focusArea == PreviewFocus && m.searchQuery != "" {
-		highlightQuery = m.searchQuery
-	} else if m.searchActive && m.focusArea == PreviewFocus && m.previewSearchBuffer != "" {
-		highlightQuery = m.previewSearchBuffer
-	}
-	if highlightQuery != "" && contentBlock != "" {
-		query := highlightQuery
-		var re *regexp.Regexp
-		var err error
-		re, err = regexp.Compile("(?i)" + query)
-		if err != nil {
-			query = regexp.QuoteMeta(query)
-			re = regexp.MustCompile("(?i)" + query)
-		}
-		indices := re.FindAllStringIndex(contentBlock, -1)
-		current := m.previewMatchIndex
-		var b strings.Builder
-		last := 0
-		for i, idx := range indices {
-			b.WriteString(contentBlock[last:idx[0]])
-			match := contentBlock[idx[0]:idx[1]]
-			if i == current {
-				b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(lipgloss.Color("226")).Bold(true).Render(match))
-			} else {
-				b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("226")).Bold(true).Underline(true).Render(match))
-			}
-			last = idx[1]
-		}
-		b.WriteString(contentBlock[last:])
-		contentBlock = b.String()
-	}
-
-	// Split content block into lines
-	contentLines := []string{}
-	if contentBlock != "" {
-		contentLines = strings.Split(contentBlock, "\n")
-	}
-
-	// Calculate available lines for content
-	maxLines := m.windowHeight - 8
-	contentLinesAvailable := maxLines - topLines
-	if contentLinesAvailable < 0 {
-		contentLinesAvailable = 0
-	}
-
-	// Truncate content lines if needed
-	if len(contentLines) > contentLinesAvailable {
-		contentLines = contentLines[:contentLinesAvailable]
-	} else if len(contentLines) < contentLinesAvailable {
-		for len(contentLines) < contentLinesAvailable {
-			contentLines = append(contentLines, "")
-		}
-	}
-
-	// Compose final lines: always show all top elements, then as much content as fits
-	finalLines := append(topElements, contentLines...)
-	// Pad to maxLines if needed
-	for len(finalLines) < maxLines {
-		finalLines = append(finalLines, "")
-	}
-
-	return lipgloss.NewStyle().Width(width).Height(maxLines).Render(strings.Join(finalLines, "\n"))
-}
-
-func (m *Model) renderPreviewColumn() string {
-	return m.renderPreviewColumnWithWidthNoBorder(m.previewWidth)
 }
 
 func countWrappedLines(s string, width int) int {
@@ -569,7 +436,7 @@ func (m *Model) renderFooter() string {
 	var statusItems []string
 
 	if m.searchMode {
-		// Only show search status in footer for AppTabsFocus and FileTrayFocus
+
 		if m.focusArea == AppTabsFocus {
 			statusItems = append(statusItems, fmt.Sprintf("Search apps: %s█", m.searchQuery))
 			statusItems = append(statusItems, " Enter: confirm")
@@ -590,7 +457,8 @@ func (m *Model) renderFooter() string {
 			statusItems = append(statusItems, " ←: back to apps")
 		case PreviewFocus:
 			statusItems = append(statusItems, "PgUp/PgDn: scroll")
-			statusItems = append(statusItems, " ←: back to files")
+			statusItems = append(statusItems, " ←/→: horizontal scroll")
+			statusItems = append(statusItems, fmt.Sprintf("Scroll: %d%%", m.previewViewport.ScrollPercent()))
 		}
 		statusItems = append(statusItems, " Tab: cycle focus")
 		statusItems = append(statusItems, " /: search")
