@@ -24,6 +24,6 @@ jobs:
         uses: goreleaser/goreleaser-action@v6.3.0
         with:
           version: latest
-          args: release --clean --release-notes="Nightly build from master branch" --title="master-nightly" --prelease
+          args: release --clean --release-notes="Nightly build from master branch" --prerelease
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
