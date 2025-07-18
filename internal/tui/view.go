@@ -458,10 +458,13 @@ func (m *Model) renderFooter() string {
 		case PreviewFocus:
 			statusItems = append(statusItems, "PgUp/PgDn: scroll")
 			statusItems = append(statusItems, " ←/→: horizontal scroll")
-			statusItems = append(statusItems, fmt.Sprintf("Scroll: %d%%", m.previewViewport.ScrollPercent()))
+			statusItems = append(statusItems, " ctrl+l: toggle line numbers")
 		}
 		statusItems = append(statusItems, " Tab: cycle focus")
 		statusItems = append(statusItems, " /: search")
+		if m.debug {
+			statusItems = append(statusItems, " ctrl+d: debug")
+		}
 		statusItems = append(statusItems, " q: quit")
 	}
 

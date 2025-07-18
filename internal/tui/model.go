@@ -73,6 +73,7 @@ type Model struct {
 	previewSearchBuffer string // stores last confirmed search for preview n/N
 	debug               bool
 	debugLog            []string
+	lineNumbers         bool
 }
 
 func NewModel(registry *config.ConfigRegistry, highlightStyle string, debug bool) *Model {
@@ -88,7 +89,7 @@ func NewModel(registry *config.ConfigRegistry, highlightStyle string, debug bool
 	trayVp := viewport.New(30, 20)
 	trayVp.YPosition = 0
 
-	return &Model{
+	m := &Model{
 		registry:         registry,
 		appList:          apps,
 		fileExists:       make(map[string]bool),
@@ -105,7 +106,10 @@ func NewModel(registry *config.ConfigRegistry, highlightStyle string, debug bool
 		fileTrayViewport: trayVp,
 		highlightStyle:   highlightStyle,
 		debug:            debug,
+		lineNumbers:      true,
 	}
+	m.logTuiDebug(fmt.Sprintf("Debug mode: %v", debug))
+	return m
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -172,8 +176,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.MouseLeft:
 			if msg.X < m.tabWidth {
 				m.focusArea = AppTabsFocus
+				// Header is 2 lines, plus 2 for search bar
+				if msg.Y > 3 && msg.Y-4 < len(m.appList) {
+					m.activeAppTab = msg.Y - 4
+					m.expandAppTab(m.activeAppTab)
+				}
 			} else if m.expandedAppTab != -1 && msg.X < m.tabWidth+m.trayWidth {
 				m.focusArea = FileTrayFocus
+				// Header is 2 lines, plus 2 for search bar
+				if msg.Y > 3 && msg.Y-4 < len(m.fileList) {
+					m.activeFileTab = msg.Y - 4
+					m.updatePreview(m.fileList[m.activeFileTab])
+				}
 			} else {
 				m.focusArea = PreviewFocus
 			}
@@ -313,8 +327,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.focusArea == FileTrayFocus {
 				m.focusArea = AppTabsFocus
 			} else if m.focusArea == PreviewFocus {
-				m.focusArea = FileTrayFocus
-			} else if m.focusArea == PreviewFocus {
 				m.previewViewport.ScrollLeft(1)
 			}
 
@@ -326,6 +338,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focusArea = DebugFocus
 				}
 			}
+		case "ctrl+l":
+			m.lineNumbers = !m.lineNumbers
+			m.updatePreview(m.fileList[m.activeFileTab])
 
 		case "right", "l":
 
@@ -576,7 +591,18 @@ func (m *Model) updatePreview(fileName string) {
 		contentLines = []string{}
 	}
 
-	m.previewViewport.SetContent(strings.Join(contentLines, "\n"))
+	var finalContent string
+	if m.lineNumbers {
+		var b strings.Builder
+		for i, line := range contentLines {
+			b.WriteString(fmt.Sprintf("%4d │ %s\n", i+1, line))
+		}
+		finalContent = b.String()
+	} else {
+		finalContent = strings.Join(contentLines, "\n")
+	}
+
+	m.previewViewport.SetContent(finalContent)
 	m.previewMatchIndices = nil
 	m.previewMatchIndex = 0
 	if m.searchMode && m.focusArea == PreviewFocus && m.searchQuery != "" {
