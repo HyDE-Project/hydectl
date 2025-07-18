@@ -32,7 +32,7 @@ const (
 )
 
 type Model struct {
-	registry   *config.ConfigRegistry
+	registry   *config.OrderedConfigRegistry
 	appList    []string
 	fileList   []string
 	fileExists map[string]bool
@@ -64,24 +64,21 @@ type Model struct {
 	lastScrollTime time.Time
 
 	highlightStyle      string
-	previewMatchIndices []int // byte offsets of regex matches in preview
-	previewMatchIndex   int   // current match index
+	previewMatchIndices []int
+	previewMatchIndex   int
 
 	jumpToLineMode  bool
 	jumpToLineInput string
 
-	previewSearchBuffer string // stores last confirmed search for preview n/N
+	previewSearchBuffer string
 	debug               bool
 	debugLog            []string
 	lineNumbers         bool
 }
 
-func NewModel(registry *config.ConfigRegistry, highlightStyle string, debug bool) *Model {
-	var apps []string
-	for appName := range registry.Apps {
-		apps = append(apps, appName)
-	}
-	sort.Strings(apps)
+func NewModel(registry *config.OrderedConfigRegistry, highlightStyle string, debug bool) *Model {
+	apps := make([]string, len(registry.AppsOrder))
+	copy(apps, registry.AppsOrder)
 
 	previewVp := viewport.New(60, 25)
 	previewVp.YPosition = 0
@@ -176,14 +173,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.MouseLeft:
 			if msg.X < m.tabWidth {
 				m.focusArea = AppTabsFocus
-				// Header is 2 lines, plus 2 for search bar
+
 				if msg.Y > 3 && msg.Y-4 < len(m.appList) {
 					m.activeAppTab = msg.Y - 4
 					m.expandAppTab(m.activeAppTab)
 				}
 			} else if m.expandedAppTab != -1 && msg.X < m.tabWidth+m.trayWidth {
 				m.focusArea = FileTrayFocus
-				// Header is 2 lines, plus 2 for search bar
+
 				if msg.Y > 3 && msg.Y-4 < len(m.fileList) {
 					m.activeFileTab = msg.Y - 4
 					m.updatePreview(m.fileList[m.activeFileTab])
@@ -196,7 +193,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if m.jumpToLineMode {
-			// Handle jump-to-line input
+
 			switch msg.String() {
 			case "enter":
 				if m.jumpToLineInput != "" {
@@ -236,7 +233,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.previewMatchIndex = (m.previewMatchIndex - 1 + len(m.previewMatchIndices)) % len(m.previewMatchIndices)
 			}
-			// Scroll preview to match
+
 			m.scrollPreviewToMatch()
 			return m, nil
 		}
@@ -244,29 +241,28 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleSearchMode(msg)
 		}
 
-		// --- Goto line and navigation keys in PreviewFocus ---
 		if m.focusArea == PreviewFocus && !m.jumpToLineMode {
-			// Vim-like: 'gg' for top, 'g' + number for goto line
+
 			if msg.String() == "g" {
 				if m.lastScrollTime.IsZero() {
 					m.lastScrollTime = time.Now()
-					return m, nil // first 'g', wait for next key
+					return m, nil
 				} else {
-					// second 'g' immediately after first
+
 					m.previewViewport.GotoTop()
 					m.lastScrollTime = time.Time{}
 					return m, nil
 				}
 			}
 			if !m.lastScrollTime.IsZero() {
-				// After 'g', if next key is a digit, start jump-to-line mode with that digit
+
 				if len(msg.String()) == 1 && msg.String()[0] >= '0' && msg.String()[0] <= '9' {
 					m.jumpToLineMode = true
 					m.jumpToLineInput = msg.String()
 					m.lastScrollTime = time.Time{}
 					return m, nil
 				} else {
-					// Any other key, reset
+
 					m.lastScrollTime = time.Time{}
 				}
 			}
@@ -465,6 +461,7 @@ func (m *Model) loadFileList() {
 	for fileName := range appConfig.Files {
 		files = append(files, fileName)
 	}
+
 	sort.Strings(files)
 
 	m.fileList = files
@@ -623,12 +620,11 @@ func (m *Model) updatePreviewMatches() {
 	m.previewMatchIndices = indices
 }
 
-// regexAllIndices returns the start indices of all regex matches (case-insensitive, fallback to literal if invalid)
 func regexAllIndices(text, pattern string) []int {
 	var indices []int
 	re, err := regexp.Compile("(?i)" + pattern)
 	if err != nil {
-		// fallback to literal
+
 		pattern = regexp.QuoteMeta(pattern)
 		re = regexp.MustCompile("(?i)" + pattern)
 	}
@@ -728,16 +724,16 @@ func (m *Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		m.searchMode = false
-		m.searchActive = true // Activate search navigation
+		m.searchActive = true
 		if m.focusArea == PreviewFocus && m.searchQuery != "" {
-			m.previewSearchBuffer = m.searchQuery // buffer the search word
+			m.previewSearchBuffer = m.searchQuery
 		}
 		if m.focusArea == AppTabsFocus && len(m.filteredApps) > 0 {
 			for i, app := range m.appList {
 				if app == m.filteredApps[0] {
 					m.activeAppTab = i
 					m.expandAppTab(i)
-					m.focusArea = FileTrayFocus // Move focus to files panel after app search
+					m.focusArea = FileTrayFocus
 					break
 				}
 			}
@@ -754,7 +750,7 @@ func (m *Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.updateFilteredLists()
 	case "esc", "ctrl+c":
 		m.searchMode = false
-		m.searchActive = false // Deactivate search navigation
+		m.searchActive = false
 		m.searchQuery = ""
 		m.updateFilteredLists()
 	case "backspace":
@@ -834,7 +830,7 @@ func (m *Model) scrollPreviewToMatch() {
 	}
 	pos := m.previewMatchIndices[m.previewMatchIndex]
 	content := m.previewViewport.View()
-	// Count newlines before pos to get line number
+
 	line := 0
 	for i := 0; i < pos && i < len(content); i++ {
 		if content[i] == '\n' {

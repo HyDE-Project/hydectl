@@ -31,7 +31,7 @@ func runConfigCommand(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if len(registry.Apps) == 0 {
+	if len(registry.AppsOrder) == 0 {
 		fmt.Println("No applications found in config registry.")
 		fmt.Println("Please add applications to your config-registry.toml file.")
 		return

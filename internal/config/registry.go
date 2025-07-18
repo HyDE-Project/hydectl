@@ -23,23 +23,26 @@ type AppConfig struct {
 	Files       map[string]ConfigFile `toml:"files"`
 }
 
-type ConfigRegistry struct {
-	Apps map[string]AppConfig
+type OrderedConfigRegistry struct {
+	AppsOrder []string
+	Apps      map[string]AppConfig
 }
 
-func LoadConfigRegistry() (*ConfigRegistry, error) {
-
-	configPaths := []string{
-		"./test/config-registry.toml",
-		filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "hydectl", "config-registry.toml"),
-		filepath.Join(os.Getenv("HOME"), ".config", "hydectl", "config-registry.toml"),
-		filepath.Join(os.Getenv("HOME"), ".local", "lib", "hydectl", "config-registry.toml"),
-		"/usr/local/lib/hydectl/config-registry.toml",
-		"/usr/lib/hydectl/config-registry.toml",
+func LoadConfigRegistry() (*OrderedConfigRegistry, error) {
+	configHome := os.Getenv("XDG_CONFIG_HOME")
+	if configHome == "" {
+		configHome = filepath.Join(os.Getenv("HOME"), ".config")
+	}
+	dataHome := os.Getenv("XDG_DATA_HOME")
+	if dataHome == "" {
+		dataHome = filepath.Join(os.Getenv("HOME"), ".local", "share")
 	}
 
-	if os.Getenv("XDG_CONFIG_HOME") == "" {
-		configPaths[1] = filepath.Join(os.Getenv("HOME"), ".config", "hydectl", "config-registry.toml")
+	configPaths := []string{
+		filepath.Join(configHome, "hyde", "config-registry.toml"),
+		filepath.Join(dataHome, "hyde", "config-registry.toml"),
+		"/usr/local/share/hyde/config-registry.toml",
+		"/usr/share/hyde/config-registry.toml",
 	}
 
 	var configPath string
@@ -51,16 +54,38 @@ func LoadConfigRegistry() (*ConfigRegistry, error) {
 	}
 
 	if configPath == "" {
-		return nil, fmt.Errorf("config-registry.toml not found in any of the expected locations")
+		return nil, fmt.Errorf("config-registry.toml not found in any of the expected locations: %v", configPaths)
 	}
 
-	var registry ConfigRegistry
-	_, err := toml.DecodeFile(configPath, &registry.Apps)
+	var (
+		appsOrder []string
+		apps      = make(map[string]AppConfig)
+	)
+
+	var meta toml.MetaData
+	meta, err := toml.DecodeFile(configPath, &apps)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing config registry: %w", err)
 	}
 
-	return &registry, nil
+	// Normalize all keys to lower case
+	normApps := make(map[string]AppConfig)
+	for k, v := range apps {
+		normApps[strings.ToLower(k)] = v
+	}
+	for _, key := range meta.Keys() {
+		if len(key) == 1 {
+			k := key[0]
+			if _, ok := apps[k]; ok {
+				appsOrder = append(appsOrder, strings.ToLower(k))
+			}
+		}
+	}
+
+	return &OrderedConfigRegistry{
+		AppsOrder: appsOrder,
+		Apps:      normApps,
+	}, nil
 }
 
 func ExpandPath(path string) string {

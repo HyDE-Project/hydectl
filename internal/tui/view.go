@@ -18,18 +18,15 @@ var (
 
 	activeTabStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("86")).
-			Padding(0, 1)
+			Foreground(lipgloss.Color("86"))
 
 	inactiveTabStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("244")).
-				Padding(0, 1)
+				Foreground(lipgloss.Color("244"))
 
 	focusedTabStyle = lipgloss.NewStyle().
 			Bold(true).
 			Underline(true).
-			Foreground(lipgloss.Color("51")).
-			Padding(0, 1)
+			Foreground(lipgloss.Color("51"))
 
 	activeFileStyle = lipgloss.NewStyle().
 			Bold(true).
@@ -74,7 +71,7 @@ func (m *Model) View() string {
 
 	if m.jumpToLineMode {
 		sections := []string{
-			headerStyle.Render("🏗️HyDE User Config Manager"),
+			headerStyle.Render("🏗️HyDE Config Manager"),
 			"Goto line: " + m.jumpToLineInput + "█",
 			m.renderMainContent(),
 			m.renderDetailsBar(),
@@ -85,7 +82,7 @@ func (m *Model) View() string {
 
 	var sections []string
 
-	header := headerStyle.Render("🏗️HyDE User Config Manager")
+	header := headerStyle.Render("🏗️HyDE Config Manager")
 	sections = append(sections, header)
 
 	mainContent := m.renderMainContent()
@@ -125,7 +122,7 @@ func (m *Model) renderDetailsBar() string {
 
 	switch m.focusArea {
 	case AppTabsFocus:
-		if activeAppTab >= 0 && activeAppTab < len(m.appList) {
+		if activeAppTab >= 0 && activeAppTab < len(m.appList) && m.activeAppTab == activeAppTab {
 			appName := m.appList[activeAppTab]
 			appConfig := m.registry.Apps[appName]
 			if appConfig.Description != "" {
@@ -133,7 +130,7 @@ func (m *Model) renderDetailsBar() string {
 			}
 		}
 	case FileTrayFocus:
-		if m.activeFileTab >= 0 && m.activeFileTab < len(m.fileList) {
+		if m.activeFileTab >= 0 && m.activeFileTab < len(m.fileList) && m.focusArea == FileTrayFocus {
 			fileName := m.fileList[m.activeFileTab]
 			fileConfig := m.registry.Apps[m.currentApp].Files[fileName]
 			if fileConfig.Description != "" {
@@ -152,7 +149,7 @@ func (m *Model) renderDetailsBar() string {
 			}
 		}
 	case PreviewFocus:
-		if m.activeFileTab >= 0 && m.activeFileTab < len(m.fileList) {
+		if m.activeFileTab >= 0 && m.activeFileTab < len(m.fileList) && m.focusArea == PreviewFocus {
 			fileName := m.fileList[m.activeFileTab]
 			fileConfig := m.registry.Apps[m.currentApp].Files[fileName]
 			if fileConfig.Description != "" {
@@ -286,19 +283,26 @@ func (m *Model) renderPreviewColumnWithWidthAndHeight(width, height int) string 
 	return lipgloss.NewStyle().Width(width).Height(height).Render(fullContent)
 }
 
+func normalizeIcon(icon string, fallback string) string {
+	icon = strings.TrimSpace(icon)
+	if icon == "" {
+		icon = fallback
+	}
+	return icon
+}
+
 func (m *Model) renderAppColumnNoBorder() string {
 	var content []string
 
-	icon := "⚙️"
-	header := fmt.Sprintf("%s Apps", icon)
+	headerIcon := normalizeIcon("⚙️", "⚙️")
+	header := fmt.Sprintf("%s Apps", headerIcon)
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("51"))
 	content = append(content, headerStyle.Render(header))
 	content = append(content, strings.Repeat("─", m.tabWidth-2))
 
 	if m.searchMode && m.focusArea == AppTabsFocus {
 		searchBar := fmt.Sprintf("🔍 %s█", m.searchQuery)
-		content = append(content, searchBar)
-		content = append(content, "")
+		content = append(content, searchBar, "")
 	}
 
 	displayList := m.appList
@@ -308,17 +312,8 @@ func (m *Model) renderAppColumnNoBorder() string {
 
 	for i, appName := range displayList {
 		appConfig := m.registry.Apps[appName]
-		icon := appConfig.Icon
-		if icon == "" {
-			icon = "⚙️"
-		}
-
-		var displayText string
-		if m.expandedAppTab == i {
-			displayText = fmt.Sprintf("▼ %s %s", icon, appName)
-		} else {
-			displayText = fmt.Sprintf("▶ %s %s", icon, appName)
-		}
+		icon := normalizeIcon(appConfig.Icon, "⚙️")
+		displayText := fmt.Sprintf("%s %s", icon, appName)
 
 		var styled string
 		if i == m.activeAppTab && m.focusArea == AppTabsFocus {
@@ -328,7 +323,6 @@ func (m *Model) renderAppColumnNoBorder() string {
 		} else {
 			styled = inactiveTabStyle.Render(displayText)
 		}
-
 		content = append(content, styled)
 	}
 
@@ -345,18 +339,14 @@ func (m *Model) renderFileColumnNoBorder() string {
 	var content []string
 
 	appConfig := m.registry.Apps[m.currentApp]
-	icon := appConfig.Icon
-	if icon == "" {
-		icon = "⚙️"
-	}
+	icon := normalizeIcon(appConfig.Icon, "⚙️")
 	header := fmt.Sprintf("%s Files", icon)
 	content = append(content, header)
 	content = append(content, strings.Repeat("─", m.trayWidth-2))
 
 	if m.searchMode && m.focusArea == FileTrayFocus {
 		searchBar := fmt.Sprintf("🔍 %s█", m.searchQuery)
-		content = append(content, searchBar)
-		content = append(content, "")
+		content = append(content, searchBar, "")
 	}
 
 	displayList := m.fileList
@@ -366,13 +356,12 @@ func (m *Model) renderFileColumnNoBorder() string {
 
 	for i, fileName := range displayList {
 		exists := m.fileExists[fileName]
-
-		var displayText string
-		if exists {
-			displayText = fmt.Sprintf("📄 %s", fileName)
-		} else {
-			displayText = fmt.Sprintf("❌ %s", fileName)
+		fileIcon := "📄"
+		if !exists {
+			fileIcon = "❌"
 		}
+		fileIcon = normalizeIcon(fileIcon, "📄")
+		displayText := fmt.Sprintf("%s %s", fileIcon, fileName)
 
 		var styled string
 		if i == m.activeFileTab && m.focusArea == FileTrayFocus {
@@ -394,7 +383,6 @@ func (m *Model) renderFileColumnNoBorder() string {
 				styled = missingFileStyle.Render(displayText)
 			}
 		}
-
 		content = append(content, styled)
 	}
 
