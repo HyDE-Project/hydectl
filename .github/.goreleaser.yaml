@@ -48,10 +48,6 @@ nfpms:
         dst: /usr/share/licenses/hydectl/LICENSE
       - src: ./README.md
         dst: /usr/share/doc/hydectl/README.md
-      - src: ./hydectl.service
-        dst: /usr/lib/systemd/user/hydectl.service
-        file_info:
-          mode: 0644
 
 aurs:
   - name: hydectl
@@ -64,8 +60,6 @@ aurs:
     git_url: "ssh://aur@aur.archlinux.org/hydectl.git"
     depends:
       - glibc
-    optdepends:
-      - "systemd: for user service support"
     provides:
       - hydectl
     conflicts:
@@ -76,9 +70,6 @@ aurs:
       
       # Install documentation
       install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
-      
-      # Install systemd user service
-      install -Dm644 hydectl.service "${pkgdir}/usr/lib/systemd/user/hydectl.service"
     commit_author:
       name: "HyDE-Project Bot"
       email: "bot@hyde-project.org"
