@@ -36,6 +36,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload hydectl binary artifact
+        if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: hydectl-binaries
+          path: dist/hydectl*
+
       - name: Run GoReleaser (master)
         if: github.ref == 'refs/heads/master'
         uses: goreleaser/goreleaser-action@v5
@@ -44,4 +51,4 @@ jobs:
           version: v2.11.0
           args: release --clean --config .github/.goreleaser.yaml
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}ss
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
