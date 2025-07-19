@@ -1,0 +1,98 @@
+version: 2
+
+project_name: hydectl
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    main: ./main.go
+    binary: "hydectl"
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    replacements:
+      amd64: x86_64
+      arm64: aarch64
+      arm: armv7l
+    files:
+      - LICENSE
+      - README.md
+
+nfpms:
+  - vendor: "HyDE-Project"
+    homepage: "https://github.com/HyDE-Project/hydectl"
+    maintainer: "HyDE-Project <contact@hyde-project.org>"
+    description: "HyDE CLI tool"
+    license: "MIT"
+    formats:
+      - deb
+      - rpm
+      - archlinux
+    bindir: /usr/bin
+    section: utils
+    priority: optional
+    contents:
+      - src: ./LICENSE
+        dst: /usr/share/licenses/hydectl/LICENSE
+      - src: ./README.md
+        dst: /usr/share/doc/hydectl/README.md
+      - src: ./hydectl.service
+        dst: /usr/lib/systemd/user/hydectl.service
+        file_info:
+          mode: 0644
+
+aurs:
+  - name: hydectl
+    homepage: "https://github.com/HyDE-Project/hydectl"
+    description: "HyDE CLI tool"
+    maintainers:
+      - "HyDE-Project <contact@hyde-project.org>"
+    license: "MIT"
+    private_key: "{{ .Env.AUR_PRIVATE_KEY }}"
+    git_url: "ssh://aur@aur.archlinux.org/hydectl.git"
+    depends:
+      - glibc
+    optdepends:
+      - "systemd: for user service support"
+    provides:
+      - hydectl
+    conflicts:
+      - hydectl-git
+    package: |-
+      # Install binary
+      install -Dm755 hydectl "${pkgdir}/usr/bin/hydectl"
+      
+      # Install documentation
+      install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+      
+      # Install systemd user service
+      install -Dm644 hydectl.service "${pkgdir}/usr/lib/systemd/user/hydectl.service"
+    commit_author:
+      name: "HyDE-Project Bot"
+      email: "bot@hyde-project.org"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
