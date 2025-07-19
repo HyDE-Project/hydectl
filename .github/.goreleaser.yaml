@@ -19,7 +19,6 @@ builds:
     binary: "hydectl"
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
-    output: "bin/"
 
 archives:
   - id: default
@@ -50,10 +49,6 @@ nfpms:
       - src: ./README.md
         dst: /usr/share/doc/hydectl/README.md
 
-release:
-  extra_files:
-    - glob: bin/hydectl*
-
 checksum:
   name_template: "checksums.txt"
 
@@ -65,3 +60,8 @@ changelog:
       - "^test:"
       - "^ci:"
       - "^chore:"
+
+release:
+  extra_files:
+    - glob: dist/**/hydectl*
+      # Only matches files named hydectl in subdirectories of dist (not archives)
