@@ -49,31 +49,6 @@ nfpms:
       - src: ./README.md
         dst: /usr/share/doc/hydectl/README.md
 
-aurs:
-  - name: hydectl
-    homepage: "https://github.com/HyDE-Project/hydectl"
-    description: "HyDE CLI tool"
-    maintainers:
-      - "HyDE-Project <contact@hyde-project.org>"
-    license: "MIT"
-    private_key: "{{ .Env.AUR_PRIVATE_KEY }}"
-    git_url: "ssh://aur@aur.archlinux.org/hydectl.git"
-    depends:
-      - glibc
-    provides:
-      - hydectl
-    conflicts:
-      - hydectl-git
-    package: |-
-      # Install binary
-      install -Dm755 hydectl "${pkgdir}/usr/bin/hydectl"
-      
-      # Install documentation
-      install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
-    commit_author:
-      name: "HyDE-Project Bot"
-      email: "bot@hyde-project.org"
-
 checksum:
   name_template: "checksums.txt"
 
