@@ -19,6 +19,7 @@ builds:
     binary: "hydectl"
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+    output: "bin/"
 
 archives:
   - id: default
@@ -51,7 +52,7 @@ nfpms:
 
 release:
   extra_files:
-    - glob: dist/hydectl*
+    - glob: bin/hydectl*
 
 checksum:
   name_template: "checksums.txt"
