@@ -30,12 +30,17 @@ archives:
       - LICENSE
       - README.md
 
+  - id: binary
+    format: binary
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+
 nfpms:
   - vendor: "HyDE-Project"
     homepage: "https://github.com/HyDE-Project/hydectl"
     maintainer: "HyDE-Project <contact@hyde-project.org>"
     description: "HyDE CLI tool"
-    license: "MIT"
+    license: "GPL-3.0"
     formats:
       - deb
       - rpm
