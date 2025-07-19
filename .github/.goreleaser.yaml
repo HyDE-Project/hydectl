@@ -49,6 +49,10 @@ nfpms:
       - src: ./README.md
         dst: /usr/share/doc/hydectl/README.md
 
+release:
+  extra_files:
+    - glob: dist/hydectl*
+
 checksum:
   name_template: "checksums.txt"
 
