@@ -31,7 +31,6 @@ jobs:
         with:
           distribution: goreleaser
           version: v2.11.0
-          args: release --clean --config .github/.goreleaser.yaml
+          args: release --clean --config .github/.goreleaser.yaml --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_CURRENT_TAG: master
