@@ -63,5 +63,5 @@ changelog:
 
 release:
   extra_files:
-    - glob: dist/**/hydectl*
+    - glob: dist/hydectl*
       # Only matches files named hydectl in subdirectories of dist (not archives)
